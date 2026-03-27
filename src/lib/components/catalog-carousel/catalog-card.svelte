@@ -29,24 +29,29 @@
 	};
 </script>
 
-<Card class="relative mx-auto w-full max-w-xs p-0 pb-4">
-	<Badge class="absolute top-2 left-2 z-20">New</Badge>
+<Card class="relative flex h-full w-full flex-col overflow-hidden rounded-xl p-0">
+	<Badge class="absolute top-3 left-3 z-20">New</Badge>
 
 	<img
 		src={product.image}
 		alt={product.title || 'Product image'}
-		class="relative aspect-square object-cover"
+		class="relative aspect-square w-full object-cover"
 	/>
 
-	<CardHeader>
-		<CardTitle role="heading" aria-level={3} class="text-base sm:text-lg">{product.title}</CardTitle
+	<CardHeader class="space-y-2 px-4 pt-4 pb-2">
+		<CardTitle role="heading" aria-level={3} class="text-base leading-snug sm:text-lg"
+			>{product.title}</CardTitle
 		>
-		<CardDescription>
-			<span class="text-sm sm:text-base">{product.description}</span>
+		<CardDescription class="text-sm leading-relaxed sm:text-base">
+			<span
+				class="[display:-webkit-box] overflow-hidden [-webkit-box-orient:vertical] [-webkit-line-clamp:2]"
+			>
+				{product.description}
+			</span>
 		</CardDescription>
 	</CardHeader>
 
-	<CardContent>
+	<CardContent class="px-4 pt-0 pb-3">
 		<div class="flex items-center justify-between">
 			<span class="text-lg font-bold text-primary sm:text-xl lg:text-2xl"
 				>{formatPrice(product.price)}</span
@@ -60,14 +65,14 @@
 		</div>
 	</CardContent>
 
-	<CardFooter>
+	<CardFooter class="mt-auto px-4 pt-0 pb-4">
 		<div class="flex w-full gap-2">
 			<Button class="flex-1">
 				<ShoppingCartIcon />
 				<span>Checkout</span>
 			</Button>
 
-			<Button class="flex-1 " variant="outline">detail</Button>
+			<Button class="flex-1" variant="outline">Detail</Button>
 		</div>
 	</CardFooter>
 </Card>

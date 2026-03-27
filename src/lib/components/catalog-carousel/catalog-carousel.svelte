@@ -31,15 +31,15 @@
 
 <div class="relative">
 	<Carousel opts={defaultOptions} class="w-full" aria-label={ariaLabel}>
-		<CarouselContent class="-ml-2 md:-ml-4">
+		<CarouselContent class="-ml-3 md:-ml-4">
 			{#each products as product (product.id)}
-				<CarouselItem class="mb-2 basis-1/2 pl-2 sm:basis-1/2 md:pl-4 lg:basis-1/3 xl:basis-1/4">
+				<CarouselItem class="basis-full pl-3 md:basis-1/2 md:pl-4 lg:basis-1/3 xl:basis-1/4">
 					<CatalogCard {product} />
 				</CarouselItem>
 			{/each}
 		</CarouselContent>
 
-		<CarouselPrevious size="icon-lg" class="inset-s-2 z-50 cursor-pointer" />
-		<CarouselNext size="icon-lg" class="inset-e-2 z-50 cursor-pointer" />
+		<CarouselPrevious size="icon-lg" class="inset-s-2 z-50 hidden cursor-pointer lg:inline-flex" />
+		<CarouselNext size="icon-lg" class="inset-e-2 z-50 hidden cursor-pointer lg:inline-flex" />
 	</Carousel>
 </div>
