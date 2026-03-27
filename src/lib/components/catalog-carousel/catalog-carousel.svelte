@@ -7,11 +7,11 @@
 		CarouselPrevious
 	} from '$lib/components/ui/carousel';
 	import CatalogCard from './catalog-card.svelte';
-	import type { Product, ProductCardEvents } from '$lib/types/product';
+	import type { Product } from '$lib/types/product';
 	import type { EmblaOptionsType } from 'embla-carousel';
 
 	/** Props */
-	let { products, onAddToCart, onViewDetails, options = {} }: Props = $props();
+	let { products, options = {}, ariaLabel = 'Product catalog carousel' }: Props = $props();
 
 	const defaultOptions = $derived.by(
 		(): EmblaOptionsType => ({
@@ -25,15 +25,16 @@
 	type Props = {
 		products: Product[];
 		options?: EmblaOptionsType;
-	} & ProductCardEvents;
+		ariaLabel?: string;
+	};
 </script>
 
 <div class="relative">
-	<Carousel opts={defaultOptions} class="w-full">
-		<CarouselContent class=" -ml-2 md:-ml-4">
+	<Carousel opts={defaultOptions} class="w-full" aria-label={ariaLabel}>
+		<CarouselContent class="-ml-2 md:-ml-4">
 			{#each products as product (product.id)}
 				<CarouselItem class="mb-2 basis-1/2 pl-2 sm:basis-1/2 md:pl-4 lg:basis-1/3 xl:basis-1/4">
-					<CatalogCard {product} {onAddToCart} {onViewDetails} />
+					<CatalogCard {product} />
 				</CarouselItem>
 			{/each}
 		</CarouselContent>

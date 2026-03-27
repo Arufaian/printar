@@ -27,6 +27,15 @@
 	/** Props */
 	let { title, description }: Props = $props();
 
+	const headingId = $derived(
+		title
+			? `feature-section-${title
+					.toLowerCase()
+					.replace(/[^a-z0-9]+/g, '-')
+					.replace(/(^-|-$)/g, '')}-heading`
+			: undefined
+	);
+
 	/** Component props type */
 	type Props = {
 		/** Array of features to display */
@@ -37,16 +46,18 @@
 	};
 </script>
 
-<section class="w-full">
+<section id="categories" class="w-full" aria-labelledby={title ? headingId : undefined}>
 	<div class="container mx-auto px-4 py-16 lg:px-8">
 		<!-- Section Header (optional) -->
 		{#if title || description}
 			<div class="mb-12 text-center">
 				{#if title}
-					<h2 class="mb-4 text-3xl font-bold tracking-tight">{title}</h2>
+					<h2 id={headingId} class="mb-4 text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
+						{title}
+					</h2>
 				{/if}
 				{#if description}
-					<p class="mx-auto max-w-2xl text-muted-foreground">{description}</p>
+					<p class="mx-auto max-w-2xl text-sm text-muted-foreground sm:text-base">{description}</p>
 				{/if}
 			</div>
 		{/if}

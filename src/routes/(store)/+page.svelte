@@ -5,9 +5,13 @@
 	import { products } from '$lib/mockup-data/product';
 </script>
 
-<main class="mx-auto lg:max-w-11/12">
+<svelte:head>
+	<title>Storefront | DigitalPrint</title>
+</svelte:head>
+
+<main id="home" class="mx-auto lg:max-w-11/12">
 	<Hero />
 	<FeatureSection title="Kenapa memilih kami" />
 
-	<CatalogCarouselSection title="Featured Products" route="test" {products} />
+	<CatalogCarouselSection title="Featured Products" route="/test" {products} />
 </main>

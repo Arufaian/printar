@@ -18,9 +18,9 @@
 		</div>
 
 		<!-- Title -->
-		<h3 class="text-lg leading-tight font-semibold">{feature.title}</h3>
+		<h3 class="text-base leading-tight font-semibold sm:text-lg">{feature.title}</h3>
 
 		<!-- Description -->
-		<p class="text-sm leading-relaxed text-muted-foreground">{feature.description}</p>
+		<p class="text-sm leading-relaxed text-muted-foreground sm:text-base">{feature.description}</p>
 	</CardContent>
 </Card>

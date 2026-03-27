@@ -24,18 +24,21 @@
 	};
 </script>
 
-<section>
+<section aria-labelledby="hero-heading">
 	<div class="container mx-auto px-4 py-16 lg:px-8">
 		<div class="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
 			<!-- Left Content -->
 			<div class="flex flex-col gap-6 lg:gap-8" in:fly={{ y: 20, duration: 600, delay: 100 }}>
 				<div class="flex flex-col gap-4">
 					<h1
-						class="bg-linear-to-br from-foreground to-foreground/70 bg-clip-text text-4xl font-bold tracking-tight text-transparent sm:text-5xl lg:text-6xl xl:text-7xl"
+						id="hero-heading"
+						class="bg-linear-to-br from-foreground to-foreground/70 bg-clip-text text-4xl font-bold tracking-tight text-transparent sm:text-5xl lg:text-6xl"
 					>
 						{headline}
 					</h1>
-					<p class="max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl lg:text-2xl">
+					<p
+						class="max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg lg:text-xl"
+					>
 						{description}
 					</p>
 				</div>
