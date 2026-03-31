@@ -1,110 +1,119 @@
 <script lang="ts">
-	import { MenuIcon, ShoppingCartIcon, UserIcon } from '@lucide/svelte';
-	import MobileMenu from '$lib/components/navbar/mobile-menu.svelte';
-	import CartDropdown from '$lib/components/navbar/cart-dropdown.svelte';
-	import SearchBar from '$lib/components/navbar/search-bar.svelte';
-	import { Button } from '$lib/components/ui/button';
-	import { Badge } from '$lib/components/ui/badge';
 	import { resolve } from '$app/paths';
-	import ThemeSwitch from './theme-switch.svelte';
-	import AnnouncementBar from './announcement-bar.svelte';
+	import ShoppingCartIcon from '@lucide/svelte/icons/shopping-cart';
+	import { LayoutDashboard, Search } from '@lucide/svelte/icons';
 
-	// VARIABLES
-	let isMobileMenuOpen = $state(false);
-	let isCartOpen = $state(false);
-	let cartItemCount = $state(3);
+	import ThemeSwitch from '$lib/components/navbar/theme-switch.svelte';
+	import { Badge } from '$lib/components/ui/badge';
+	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
+	import * as Dialog from '$lib/components/ui/dialog/index.js';
 
-	const navLinks = [
-		{ label: 'Business Cards', href: '#business-cards' },
-		{ label: 'Flyers & Posters', href: '#flyers' },
-		{ label: 'Banners', href: '#banners' },
-		{ label: 'Custom Prints', href: '#custom' },
-		{ label: 'Design Services', href: '#design' }
+	let {
+		cartCount = 3
+	}: {
+		cartCount?: number;
+	} = $props();
+
+	const sectionLinks: Array<{ href: `/#${string}`; label: string; description: string }> = [
+		{
+			href: '/#home',
+			label: 'Home',
+			description: 'Jump to our featured intro and latest highlights.'
+		},
+		{
+			href: '/#categories',
+			label: 'Categories',
+			description: 'Browse grouped product types by campaign or intent.'
+		},
+		{
+			href: '/#catalog-carousel',
+			label: 'Catalog Carousel',
+			description: 'Preview quick picks and current product recommendations.'
+		}
 	];
 </script>
 
-<AnnouncementBar />
-
-<nav class="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur-sm">
-	<div class="mx-auto flex h-16 items-center justify-between gap-4 px-4 lg:max-w-11/12 lg:px-8">
-		<!-- Logo -->
-		<a href="#home" class="flex shrink-0 items-center gap-2">
+<nav class="sticky top-0 z-50 border-b bg-background/95 backdrop-blur-sm">
+	<div
+		class="mx-auto flex h-16 w-full max-w-11/12 items-center gap-2 px-3 sm:gap-3 sm:px-5 lg:gap-4 lg:px-8"
+	>
+		<a href={resolve('/#home')} class="flex shrink-0 items-center gap-2">
 			<div
-				class="shadow-lg-lg flex size-9 items-center justify-center rounded-lg bg-linear-to-br from-primary to-primary/60 text-lg font-bold text-primary-foreground"
+				class="flex size-9 items-center justify-center rounded-md bg-linear-to-br from-primary to-primary/60 text-sm font-semibold text-primary-foreground"
 			>
 				DP
 			</div>
-			<span class="hidden text-lg font-bold sm:inline-block">DigitalPrint</span>
+			<span class="hidden text-base font-semibold md:inline">DigitalPrint</span>
 		</a>
 
-		<!-- Desktop Navigation Links -->
-		<div class="hidden items-center gap-1 lg:flex">
-			{#each navLinks as link (link)}
-				<a
-					href={resolve('/')}
-					class="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-				>
-					{link.label}
-				</a>
-			{/each}
-		</div>
+		<div class="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+			<div class="shrink-0">
+				<!-- todo: later on i'll use hooks if mobile device -->
+				<div class="hidden md:inline-flex">
+					<DropdownMenu.Root>
+						<DropdownMenu.Trigger
+							class="inline-flex h-16 items-center gap-1.5 rounded-md  px-2 text-sm font-medium ring-0 sm:px-3"
+						>
+							<div class="flex items-center justify-center gap-1.5">
+								<LayoutDashboard class="size-4" /> <span>category</span>
+							</div>
+						</DropdownMenu.Trigger>
 
-		<div class="items-center gap-1 md:hidden">
-			<SearchBar />
-		</div>
-
-		<!-- Right Section -->
-		<div class="flex items-center gap-2">
-			<!-- Search Bar (hidden on mobile) -->
-			<div class="hidden md:block">
-				<SearchBar />
+						<DropdownMenu.Content class="w-md">
+							<div class="grid grid-cols-2 gap-4">
+								{#each sectionLinks as item (item)}
+									<DropdownMenu.Item>
+										<a href={resolve('/')}>
+											<span class="text-base font-semibold">{item.label}</span>
+											<p class="text-sm">{item.description}</p></a
+										>
+									</DropdownMenu.Item>
+								{/each}
+							</div>
+						</DropdownMenu.Content>
+					</DropdownMenu.Root>
+				</div>
 			</div>
 
-			<!-- Placeholder icon only: dark mode behavior intentionally disabled for now -->
-			<!-- <div class="flex items-center gap-1 text-muted-foreground" aria-hidden="true">
-				<SunIcon class="size-4" />
-				<MoonIcon class="size-4" />
-			</div> -->
+			<div class="min-w-0 flex-1">
+				<Dialog.Root>
+					<Dialog.Trigger
+						type="button"
+						class={`${buttonVariants({ variant: 'outline' })}  h-11 w-full max-w-lg justify-start rounded-full px-4 text-sm font-normal text-muted-foreground `}
+					>
+						<Search class="mr-2 size-4" />
+						<span class=" inline-flex">Cari produk...</span>
+					</Dialog.Trigger>
+					<Dialog.Content showCloseButton={false}>
+						<Dialog.Header>
+							<Dialog.Title>Are you sure absolutely sure?</Dialog.Title>
+							<Dialog.Description>
+								This action cannot be undone. This will permanently delete your account and remove
+								your data from our servers.
+							</Dialog.Description>
+						</Dialog.Header>
+					</Dialog.Content>
+				</Dialog.Root>
+			</div>
+		</div>
+
+		<div class="flex shrink-0 items-center justify-end gap-2">
+			<Button variant="outline" class="relative ">
+				{#if cartCount > 0}
+					<Badge
+						class="absolute -top-1 -right-1 h-5 min-w-5 rounded-full px-1 font-mono tabular-nums"
+						variant="destructive"
+					>
+						{cartCount}
+					</Badge>
+				{/if}
+				<ShoppingCartIcon class="size-5 stroke-2" />
+			</Button>
 
 			<ThemeSwitch />
-
-			<!-- Cart Button -->
-			<div class="relative">
-				<Button
-					size="icon"
-					variant="ghost"
-					class="size-9 shrink-0"
-					onclick={() => (isCartOpen = !isCartOpen)}
-				>
-					<ShoppingCartIcon class="size-5" />
-					{#if cartItemCount > 0}
-						<Badge
-							variant="destructive"
-							class="absolute -top-1 -right-1 flex size-5 items-center justify-center p-0 text-xs"
-						>
-							{cartItemCount}
-						</Badge>
-					{/if}
-				</Button>
-				<CartDropdown bind:isOpen={isCartOpen} bind:itemCount={cartItemCount} />
-			</div>
-
-			<!-- User Account -->
-			<Button size="icon" variant="ghost" class="hidden size-9 shrink-0 sm:flex">
-				<UserIcon class="size-5" />
-			</Button>
-
-			<!-- Mobile Menu Button -->
-			<Button
-				size="icon"
-				variant="ghost"
-				class="size-9 shrink-0 lg:hidden"
-				onclick={() => (isMobileMenuOpen = true)}
-			>
-				<MenuIcon class="size-5" />
-			</Button>
+			<Button class="hidden h-9 px-4 sm:inline-flex" variant="outline">register</Button>
+			<Button class="hidden h-9 px-4 sm:inline-flex">Login</Button>
 		</div>
 	</div>
 </nav>
-
-<MobileMenu bind:isOpen={isMobileMenuOpen} {navLinks} />
