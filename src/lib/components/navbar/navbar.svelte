@@ -35,9 +35,7 @@
 </script>
 
 <nav class="sticky top-0 z-50 border-b bg-background/95 backdrop-blur-sm">
-	<div
-		class="mx-auto flex h-16 w-full max-w-11/12 items-center gap-2 px-3 sm:gap-3 sm:px-5 lg:gap-4 lg:px-8"
-	>
+	<div class="container mx-auto flex h-16 items-center gap-2 px-4 sm:gap-3 lg:gap-4 lg:px-8">
 		<a href={resolve('/#home')} class="flex shrink-0 items-center gap-2">
 			<div
 				class="flex size-9 items-center justify-center rounded-md bg-linear-to-br from-primary to-primary/60 text-sm font-semibold text-primary-foreground"

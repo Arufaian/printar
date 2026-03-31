@@ -29,7 +29,7 @@
 <section id="catalog-carousel" class="w-full" aria-labelledby={title ? headingId : undefined}>
 	<div class="container mx-auto px-4 py-16 lg:px-8">
 		{#if title || route}
-			<div class="mb-10 flex flex-col gap-3 sm:mb-12 sm:flex-row sm:items-end sm:justify-between">
+			<div class="mb-12 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 				{#if title}
 					<h2 id={headingId} class="text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
 						{title}

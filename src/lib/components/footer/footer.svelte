@@ -8,7 +8,7 @@
 </script>
 
 <footer class="border-t bg-card text-card-foreground">
-	<div class="container mx-auto gap-4 px-4 py-4 lg:max-w-11/12 lg:px-8 lg:py-16">
+	<div class="container mx-auto gap-4 px-4 py-12 lg:px-8 lg:py-16">
 		<!-- Main footer content -->
 		<div class="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-12 lg:gap-12">
 			<!-- Brand section - spans 3 columns on large screens -->

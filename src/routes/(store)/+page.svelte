@@ -9,7 +9,7 @@
 	<title>Storefront | DigitalPrint</title>
 </svelte:head>
 
-<main id="home" class="mx-auto lg:max-w-11/12">
+<main id="home" class="w-full">
 	<Hero />
 	<FeatureSection title="Kenapa memilih kami" />
 
