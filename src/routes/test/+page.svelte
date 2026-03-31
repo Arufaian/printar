@@ -11,7 +11,7 @@
 </script>
 
 <section class="py-16">
-	<div class="flex gap-4">
+	<div class="flex gap-4 md:scale-50">
 		<Card class=" w-full max-w-xs py-3.5">
 			<img
 				src="https://images.unsplash.com/photo-1581291518857-4e27b48ff24e"
