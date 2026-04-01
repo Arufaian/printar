@@ -31,7 +31,7 @@
 	// Default menu items jika tidak ada custom items
 	const defaultItems: MenuItem[] = [
 		{ icon: House, label: 'Home', href: '/' },
-		{ icon: LayoutDashboard, label: 'Kategori', href: '/test' },
+		{ icon: LayoutDashboard, label: 'Kategori', href: '/categories' },
 		{ icon: User, label: 'Account', href: '/test' }
 	];
 

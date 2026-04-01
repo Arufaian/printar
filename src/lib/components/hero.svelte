@@ -97,8 +97,4 @@
 			</div>
 		</div>
 	</div>
-
-	<!-- Decorative Elements -->
-	<div class="absolute top-0 right-0 -z-10 size-96 rounded-full bg-primary/5 blur-3xl"></div>
-	<div class="absolute bottom-0 left-0 -z-10 size-96 rounded-full bg-accent/5 blur-3xl"></div>
 </section>

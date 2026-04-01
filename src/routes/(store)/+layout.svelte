@@ -5,7 +5,14 @@
 	import DockMenu from '$lib/components/dock/dock-menu.svelte';
 	import { page } from '$app/state';
 	import type { Pathname } from '$app/types';
+	import { onMount } from 'svelte';
 	let { children } = $props();
+
+	let isPhone = $state(false);
+
+	onMount(() => {
+		isPhone = Device.isPhone;
+	});
 </script>
 
 <div>
@@ -14,9 +21,11 @@
 
 	{@render children()}
 
-	{#if Device.isPhone}
+	<div class:hidden={!isPhone} class="contents">
 		<DockMenu activePath={page.url.pathname as Pathname} />
-	{:else}
+	</div>
+
+	{#if !isPhone}
 		<Footer />
 	{/if}
 </div>
