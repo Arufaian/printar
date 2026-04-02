@@ -32,7 +32,7 @@
 			<img class="rounded-md object-center" src="https://picsum.photos/1344/420" alt="" />
 		</div>
 
-		<div class="mb-16">
+		<div class="mb-10">
 			<p class="text-sm leading-relaxed text-muted-foreground md:text-base">
 				Lorem, ipsum dolor sit amet consectetur adipisicing elit. Laborum adipisci quos fuga maxime!
 				Consequuntur autem, quos nulla sapiente necessitatibus perferendis tempora error eligendi
@@ -69,7 +69,7 @@
 						class="aspect-square object-cover"
 					/>
 
-					<Card.Header class="m-0 flex flex-col items-center gap-0 p-0">
+					<Card.Header class="m-0 flex flex-col items-center gap-0 p-0 py-4">
 						<Card.Title
 							role="heading"
 							aria-level={3}
@@ -78,8 +78,8 @@
 						>
 					</Card.Header>
 
-					<Card.Content>
-						<div class="mb-2 flex justify-center">
+					<Card.Content class="pb-4">
+						<div class="mb-2 flex justify-start">
 							<span class="text-sm font-bold text-primary sm:text-base md:text-lg"
 								>RP. 1{_}0.000</span
 							>
