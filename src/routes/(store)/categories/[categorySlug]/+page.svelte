@@ -29,7 +29,7 @@
 		</div>
 
 		<div class="mb-8">
-			<img class="rounded-md object-center" src="https://picsum.photos/1344/420" alt="" />
+			<img class="w-full rounded-md object-cover" src="https://picsum.photos/1344/420" alt="" />
 		</div>
 
 		<div class="mb-10">
@@ -40,19 +40,19 @@
 			</p>
 		</div>
 
-		<div class="mb-8 flex justify-between">
+		<div class="mb-8 flex flex-wrap items-center justify-between gap-3">
 			<div class="flex items-baseline gap-2">
 				<span class="text-sm font-semibold md:text-base">Merch</span>
 				<span class="text-xs text-muted-foreground md:text-sm">(120 produk)</span>
 			</div>
 
 			<div class="flex gap-4">
-				<Button variant="outline" class="px-4 py-6 text-sm md:text-base">
+				<Button variant="outline" class="px-3 py-4 text-sm sm:px-4 sm:py-5 md:py-6 md:text-base">
 					<ArrowUpDown class="size-5 stroke-1" />
 					<span>Urutkan</span>
 					<ChevronDown class="size-5 stroke-1" /></Button
 				>
-				<Button variant="outline" class="px-4 py-6 text-sm md:text-base">
+				<Button variant="outline" class="px-3 py-4 text-sm sm:px-4 sm:py-5 md:py-6 md:text-base">
 					<Funnel class="size-5 stroke-1" />
 					<span>Filter</span>
 					<ChevronDown class="size-5 stroke-1" /></Button
@@ -60,13 +60,13 @@
 			</div>
 		</div>
 
-		<div class="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-5">
+		<div class="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 md:gap-5 lg:grid-cols-5 lg:gap-6">
 			{#each items as _, i (i)}
 				<Card.Root>
 					<img
 						src="https://picsum.photos/265/265"
 						alt="product"
-						class="aspect-square object-cover"
+						class="aspect-square w-full object-cover"
 					/>
 
 					<Card.Header class="m-0 flex flex-col items-center gap-0 p-0 py-4">
