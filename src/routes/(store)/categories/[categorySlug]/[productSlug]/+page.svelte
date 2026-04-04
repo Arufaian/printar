@@ -23,7 +23,7 @@
 
 <main class="container mx-auto px-4 py-8 lg:px-8">
 	<div class="flex flex-col">
-		<div class="mb-6">
+		<div class="mb-8">
 			<Breadcrumb>
 				<BreadcrumbList>
 					<BreadcrumbItem>
@@ -41,15 +41,15 @@
 			</Breadcrumb>
 		</div>
 
-		<div class="mb-6">
+		<div class="mb-8">
 			<Separator />
 		</div>
 
-		<div class="mb-6">
+		<div class="mb-8">
 			<div class="grid grid-cols-12 gap-8">
 				<!-- Product Image -->
-				<div class="col-span-4 border border-green-500">
-					<div class="flex flex-col">
+				<div class="col-span-4">
+					<div class="flex flex-col space-y-4">
 						<figure class="aspect-square w-full">
 							<img
 								class="w-full rounded-md object-cover"
@@ -57,8 +57,8 @@
 								alt="Product Name - gambar utama"
 							/>
 						</figure>
-						<div class="flex">
-							<button type="button" aria-label="Lihat gambar produk 1" class="max-w-24 p-2">
+						<div class="flex gap-3">
+							<button type="button" aria-label="Lihat gambar produk 1" class="flex-1">
 								<img
 									class="w-full rounded-md object-cover"
 									src="https://picsum.photos/200/200"
@@ -66,7 +66,7 @@
 								/>
 							</button>
 
-							<button type="button" aria-label="Lihat gambar produk 2" class="max-w-24 p-2">
+							<button type="button" aria-label="Lihat gambar produk 2" class="flex-1">
 								<img
 									class="w-full rounded-md object-cover"
 									src="https://picsum.photos/200/200"
@@ -74,7 +74,7 @@
 								/>
 							</button>
 
-							<button type="button" aria-label="Lihat gambar produk 3" class="max-w-24 p-2">
+							<button type="button" aria-label="Lihat gambar produk 3" class="flex-1">
 								<img
 									class="w-full rounded-md object-cover"
 									src="https://picsum.photos/200/200"
@@ -82,7 +82,7 @@
 								/>
 							</button>
 
-							<button type="button" aria-label="Lihat gambar produk 4" class="max-w-24 p-2">
+							<button type="button" aria-label="Lihat gambar produk 4" class="flex-1">
 								<img
 									class="w-full rounded-md object-cover"
 									src="https://picsum.photos/200/200"
@@ -94,15 +94,15 @@
 				</div>
 
 				<!-- Product Details -->
-				<div class="col-span-5 border border-yellow-500">
-					<div class="mb-4">
+				<div class="col-span-5">
+					<div class="space-y-6">
 						<h1 class="text-2xl leading-tight font-semibold lg:text-3xl">
 							Product Name - product variant
 						</h1>
 						<div class="mt-2 flex items-center gap-3 text-sm text-muted-foreground">
 							<span>Terjual 50 rb+</span>
 
-							<div class="flex items-center gap-2">
+							<div class="flex items-center gap-3">
 								<Star class="h-4 w-4" fill="yellow" />
 								<span class="text-sm font-medium text-foreground"
 									>4.5 <span class="text-muted-foreground">(100)</span></span
@@ -110,14 +110,14 @@
 							</div>
 						</div>
 
-						<div class="mt-4 mb-4">
+						<div class="pt-1">
 							<span class="text-2xl font-bold tracking-tight">Rp. 19.990</span>
 						</div>
 
-						<Separator class="mb-4" />
+						<Separator />
 
 						<!-- variant -->
-						<section class="mb-6" aria-labelledby="product-variant-heading">
+						<section aria-labelledby="product-variant-heading">
 							<div class="mb-3">
 								<h2 id="product-variant-heading" class="text-base leading-snug font-medium">
 									Pilih varian:
@@ -169,7 +169,7 @@
 						</section>
 
 						<!-- options  -->
-						<section class="mb-6" aria-labelledby="product-option-heading">
+						<section aria-labelledby="product-option-heading">
 							<div class="mb-3">
 								<h2 id="product-option-heading" class="text-base leading-snug font-medium">
 									Pilih opsi
@@ -221,7 +221,7 @@
 						</section>
 
 						<!-- details -->
-						<section class="mb-6" aria-labelledby="product-detail-heading">
+						<section aria-labelledby="product-detail-heading">
 							<div class="mb-3">
 								<h2 id="product-detail-heading" class="text-base leading-snug font-medium">
 									Detail product
@@ -252,7 +252,7 @@
 							</ul>
 						</section>
 
-						<section class="mb-4" aria-labelledby="product-description-heading">
+						<section aria-labelledby="product-description-heading">
 							<div class="mb-3">
 								<h2 id="product-description-heading" class="text-base leading-snug font-medium">
 									Deskripsi product
@@ -280,8 +280,8 @@
 						<CardHeader>
 							<CardTitle>Product Name</CardTitle>
 						</CardHeader>
-						<CardContent>
-							<div class="mb-4 flex gap-2">
+						<CardContent class="space-y-4">
+							<div class="flex gap-3">
 								<div class="max-w-12">
 									<img src="https://picsum.photos/200/200" alt="" />
 								</div>
@@ -292,8 +292,8 @@
 
 							<Separator />
 
-							<div class="mt-4 flex gap-2">
-								<div class="flex gap-2">
+							<div class="flex gap-3">
+								<div class="flex gap-3">
 									<ButtonGroup>
 										<Button variant="outline" size="icon">
 											<Minus />
@@ -311,7 +311,7 @@
 								</div>
 							</div>
 
-							<div class="mt-4 flex justify-between">
+							<div class="flex items-center justify-between">
 								<span class="text-sm text-muted-foreground">Subtotal</span>
 								<span class="text-base font-semibold text-foreground">$19.99</span>
 							</div>
