@@ -21,7 +21,7 @@
 	import { Plus, Minus, Star } from '@lucide/svelte/icons';
 </script>
 
-<div class="container mx-auto px-4 py-8 lg:px-8">
+<main class="container mx-auto px-4 py-8 lg:px-8">
 	<div class="flex flex-col">
 		<div class="mb-6">
 			<Breadcrumb>
@@ -50,15 +50,15 @@
 				<!-- Product Image -->
 				<div class="col-span-4 border border-green-500">
 					<div class="flex flex-col">
-						<div class="aspect-square w-full">
+						<figure class="aspect-square w-full">
 							<img
 								class="w-full rounded-md object-cover"
 								src="https://picsum.photos/700/700"
-								alt="product"
+								alt="Product Name - gambar utama"
 							/>
-						</div>
+						</figure>
 						<div class="flex">
-							<button class="max-w-24 p-2">
+							<button type="button" aria-label="Lihat gambar produk 1" class="max-w-24 p-2">
 								<img
 									class="w-full rounded-md object-cover"
 									src="https://picsum.photos/200/200"
@@ -66,7 +66,7 @@
 								/>
 							</button>
 
-							<button class="max-w-24 p-2">
+							<button type="button" aria-label="Lihat gambar produk 2" class="max-w-24 p-2">
 								<img
 									class="w-full rounded-md object-cover"
 									src="https://picsum.photos/200/200"
@@ -74,7 +74,7 @@
 								/>
 							</button>
 
-							<button class="max-w-24 p-2">
+							<button type="button" aria-label="Lihat gambar produk 3" class="max-w-24 p-2">
 								<img
 									class="w-full rounded-md object-cover"
 									src="https://picsum.photos/200/200"
@@ -82,7 +82,7 @@
 								/>
 							</button>
 
-							<button class="max-w-24 p-2">
+							<button type="button" aria-label="Lihat gambar produk 4" class="max-w-24 p-2">
 								<img
 									class="w-full rounded-md object-cover"
 									src="https://picsum.photos/200/200"
@@ -96,26 +96,32 @@
 				<!-- Product Details -->
 				<div class="col-span-5 border border-yellow-500">
 					<div class="mb-4">
-						<h3>Product Name - product variant</h3>
-						<div class="flex gap-2">
+						<h1 class="text-2xl leading-tight font-semibold lg:text-3xl">
+							Product Name - product variant
+						</h1>
+						<div class="mt-2 flex items-center gap-3 text-sm text-muted-foreground">
 							<span>Terjual 50 rb+</span>
 
 							<div class="flex items-center gap-2">
-								<Star class="h-4 w-4 " fill="yellow" />
-								<span class="text-sm font-medium">4.5 <span>(100)</span></span>
+								<Star class="h-4 w-4" fill="yellow" />
+								<span class="text-sm font-medium text-foreground"
+									>4.5 <span class="text-muted-foreground">(100)</span></span
+								>
 							</div>
 						</div>
 
-						<div class="mb-4">
-							<span>Rp. 19.990</span>
+						<div class="mt-4 mb-4">
+							<span class="text-2xl font-bold tracking-tight">Rp. 19.990</span>
 						</div>
 
 						<Separator class="mb-4" />
 
 						<!-- variant -->
-						<div class="mb-4">
-							<div class="mb-4">
-								<span class="text-sm text-muted-foreground">Pilih varian:</span>
+						<section class="mb-6" aria-labelledby="product-variant-heading">
+							<div class="mb-3">
+								<h2 id="product-variant-heading" class="text-base leading-snug font-medium">
+									Pilih varian:
+								</h2>
 							</div>
 							<RadioGroup>
 								<div class="flex flex-wrap gap-4">
@@ -134,7 +140,7 @@
 													/>
 												</div>
 
-												<span> varian 1 </span>
+												<span>varian 1</span>
 											</div>
 										</label>
 									</div>
@@ -154,18 +160,20 @@
 													/>
 												</div>
 
-												<span> varian 2 </span>
+												<span>varian 2</span>
 											</div>
 										</label>
 									</div>
 								</div>
 							</RadioGroup>
-						</div>
+						</section>
 
 						<!-- options  -->
-						<div class="mb-4">
-							<div class="mb-4">
-								<span class="text-sm text-muted-foreground">Pilih opsi</span>
+						<section class="mb-6" aria-labelledby="product-option-heading">
+							<div class="mb-3">
+								<h2 id="product-option-heading" class="text-base leading-snug font-medium">
+									Pilih opsi
+								</h2>
 							</div>
 							<RadioGroup>
 								<div class="flex flex-wrap gap-4">
@@ -184,7 +192,7 @@
 													/>
 												</div>
 
-												<span> option 1 </span>
+												<span>option 1</span>
 											</div>
 										</label>
 									</div>
@@ -204,19 +212,23 @@
 													/>
 												</div>
 
-												<span> option 2 </span>
+												<span>option 2</span>
 											</div>
 										</label>
 									</div>
 								</div>
 							</RadioGroup>
-						</div>
+						</section>
 
 						<!-- details -->
-						<div class="mb-4">
-							<span> Detail product </span>
+						<section class="mb-6" aria-labelledby="product-detail-heading">
+							<div class="mb-3">
+								<h2 id="product-detail-heading" class="text-base leading-snug font-medium">
+									Detail product
+								</h2>
+							</div>
 
-							<ul class="">
+							<ul class="space-y-2">
 								<li>
 									<div class="flex items-center gap-2">
 										<span class="text-muted-foreground">Detail 1: </span>
@@ -238,28 +250,32 @@
 									</div>
 								</li>
 							</ul>
-						</div>
+						</section>
 
-						<div class="mb-4">
-							<span> Deskripsi product </span>
-							<p class="mb-4">
+						<section class="mb-4" aria-labelledby="product-description-heading">
+							<div class="mb-3">
+								<h2 id="product-description-heading" class="text-base leading-snug font-medium">
+									Deskripsi product
+								</h2>
+							</div>
+							<p class="mb-4 text-sm leading-6 text-foreground">
 								Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptas ipsum consequatur,
 								voluptate quisquam deleniti cumque, dicta voluptatum, doloremque sed magnam.
 								Voluptas ipsum consequatur, voluptate quisquam deleniti cumque, dicta voluptatum,
 								doloremque sed magnam.
 							</p>
 
-							<p>
+							<p class="text-sm leading-6 text-foreground">
 								Lorem ipsum dolor, sit amet consectetur adipisicing elit. Eligendi, accusantium
 								mollitia dicta voluptatibus exercitationem necessitatibus voluptatum dolore in,
 								commodi neque deserunt, impedit vitae atque. Nobis nam ipsum porro magni tempora.
 							</p>
-						</div>
+						</section>
 					</div>
 				</div>
 
 				<!-- card action -->
-				<div class="col-span-3">
+				<aside class="col-span-3" aria-label="Ringkasan pembelian">
 					<Card>
 						<CardHeader>
 							<CardTitle>Product Name</CardTitle>
@@ -270,7 +286,7 @@
 									<img src="https://picsum.photos/200/200" alt="" />
 								</div>
 								<div class="flex items-center">
-									<span>Mug custom</span>
+									<span class="text-sm font-medium">Mug custom</span>
 								</div>
 							</div>
 
@@ -290,14 +306,14 @@
 
 									<div class="flex items-center gap-2">
 										<span class="text-sm text-muted-foreground">Stok:</span>
-										<span class="text-sm font-medium">10</span>
+										<span class="text-sm font-medium text-foreground">10</span>
 									</div>
 								</div>
 							</div>
 
 							<div class="mt-4 flex justify-between">
-								<span>Subtotal</span>
-								<span class="font-medium">$19.99</span>
+								<span class="text-sm text-muted-foreground">Subtotal</span>
+								<span class="text-base font-semibold text-foreground">$19.99</span>
 							</div>
 						</CardContent>
 						<CardFooter>
@@ -307,8 +323,8 @@
 							</div>
 						</CardFooter>
 					</Card>
-				</div>
+				</aside>
 			</div>
 		</div>
 	</div>
-</div>
+</main>
