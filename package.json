@@ -11,7 +11,11 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"lint": "prettier --check . && eslint .",
-		"format": "prettier --write ."
+		"format": "prettier --write .",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate": "drizzle-kit migrate",
+		"db:push": "drizzle-kit push",
+		"db:studio": "drizzle-kit studio"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^2.0.2",
@@ -48,7 +52,12 @@
 		"@iconify/svelte": "^5.2.1",
 		"@supabase/ssr": "^0.10.0",
 		"@supabase/supabase-js": "^2.101.1",
+		"dotenv": "^17.4.1",
+		"drizzle-kit": "^0.31.10",
+		"drizzle-orm": "^0.45.2",
 		"mode-watcher": "^1.1.0",
-		"svelte-device-info": "^1.0.6"
+		"postgres": "^3.4.9",
+		"svelte-device-info": "^1.0.6",
+		"zod": "^4.3.6"
 	}
 }
