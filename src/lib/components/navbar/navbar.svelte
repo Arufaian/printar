@@ -110,7 +110,9 @@
 			</Button>
 
 			<ThemeSwitch />
-			<Button class="hidden h-9 px-4 sm:inline-flex" variant="outline">register</Button>
+			<a href={resolve('/sign-up')}>
+				<Button class="hidden h-9 px-4 sm:inline-flex" variant="outline">sign up</Button>
+			</a>
 			<Button class="hidden h-9 px-4 sm:inline-flex">Login</Button>
 		</div>
 	</div>
