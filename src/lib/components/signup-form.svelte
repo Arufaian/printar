@@ -9,54 +9,43 @@
 </script>
 
 <div class={cn('flex flex-col gap-6', className)} {...restProps}>
-	<Card.Root class="overflow-hidden p-0">
-		<Card.Content class="grid p-0 md:grid-cols-2">
-			<form class="p-6 md:p-8">
+	<Card.Root>
+		<Card.Header class="text-center">
+			<Card.Title class="text-xl">Create your account</Card.Title>
+			<Card.Description>Enter your email below to create your account</Card.Description>
+		</Card.Header>
+		<Card.Content>
+			<form>
 				<Field.Group>
-					<div class="flex flex-col items-center gap-2 text-center">
-						<h1 class="text-2xl font-bold">Create your account</h1>
-						<p class="text-sm text-balance text-muted-foreground">
-							Enter your email below to create your account
-						</p>
-					</div>
-
 					<Field.Field>
-						<Field.Label for="name">Full name</Field.Label>
-						<Input id="name" type="text" placeholder="asep bensin" required />
+						<Field.Label for="name">Full Name</Field.Label>
+						<Input id="name" type="text" placeholder="John Doe" required />
 					</Field.Field>
-
 					<Field.Field>
 						<Field.Label for="email">Email</Field.Label>
 						<Input id="email" type="email" placeholder="m@example.com" required />
-						<Field.Description>
-							We'll use this to contact you. We will not share your email with anyone else.
-						</Field.Description>
 					</Field.Field>
 					<Field.Field>
-						<Field.Field>
+						<Field.Field class="grid grid-cols-2 gap-4">
 							<Field.Field>
 								<Field.Label for="password">Password</Field.Label>
 								<Input id="password" type="password" required />
+							</Field.Field>
+							<Field.Field>
+								<Field.Label for="confirm-password">Confirm Password</Field.Label>
+								<Input id="confirm-password" type="password" required />
 							</Field.Field>
 						</Field.Field>
 						<Field.Description>Must be at least 8 characters long.</Field.Description>
 					</Field.Field>
 					<Field.Field>
 						<Button type="submit">Create Account</Button>
+						<Field.Description class="text-center">
+							Already have an account? <a href="#/">Sign in</a>
+						</Field.Description>
 					</Field.Field>
-
-					<Field.Description class="text-center">
-						Already have an account? <a href="#/">Sign in</a>
-					</Field.Description>
 				</Field.Group>
 			</form>
-			<div class="relative hidden bg-muted md:block">
-				<img
-					src="https://picsum.photos/800"
-					alt=""
-					class="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
-				/>
-			</div>
 		</Card.Content>
 	</Card.Root>
 	<Field.Description class="px-6 text-center">
