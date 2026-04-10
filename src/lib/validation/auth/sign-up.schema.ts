@@ -22,12 +22,7 @@ export const signupSchema = z
 	.refine((data) => data.password === data.confirmPassword, {
 		message: 'Password tidak sama',
 		path: ['confirmPassword']
-	})
-
-	.transform((data) => ({
-		name: data.name,
-		email: data.email,
-		password: data.password
-	}));
+	});
 
 export type SignUpInput = z.infer<typeof signupSchema>;
+export type SignUpSchema = typeof signupSchema;
