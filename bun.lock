@@ -22,7 +22,7 @@
         "@eslint/js": "^9.39.2",
         "@fontsource-variable/inter": "^5.2.8",
         "@internationalized/date": "^3.12.0",
-        "@lucide/svelte": "^0.577.0",
+        "@lucide/svelte": "^1.8.0",
         "@sveltejs/adapter-auto": "^7.0.0",
         "@sveltejs/kit": "^2.50.2",
         "@sveltejs/vite-plugin-svelte": "^6.2.4",
@@ -41,6 +41,7 @@
         "prettier-plugin-tailwindcss": "^0.7.2",
         "svelte": "^5.54.0",
         "svelte-check": "^4.4.2",
+        "svelte-sonner": "^1.1.0",
         "tailwind-merge": "^3.5.0",
         "tailwind-variants": "^3.2.2",
         "tailwindcss": "^4.1.18",
@@ -174,7 +175,7 @@
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
-    "@lucide/svelte": ["@lucide/svelte@0.577.0", "", { "peerDependencies": { "svelte": "^5" } }, "sha512-0P6mkySd2MapIEgq08tADPmcN4DHndC/02PWwaLkOerXlx5Sv9aT4BxyXLIY+eccr0g/nEyCYiJesqS61YdBZQ=="],
+    "@lucide/svelte": ["@lucide/svelte@1.8.0", "", { "peerDependencies": { "svelte": "^5" } }, "sha512-+zYQUKqEOVP5lxbGmxL1OVgGMQtRK91eIJ0bR+3Cr1ts4oQEsQfxyzzd5X47psJlblAuGFrl2xm4YuATjR9oaA=="],
 
     "@polka/url": ["@polka/url@1.0.0-next.29", "", {}, "sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww=="],
 
@@ -666,6 +667,8 @@
 
     "svelte-eslint-parser": ["svelte-eslint-parser@1.6.0", "", { "dependencies": { "eslint-scope": "^8.2.0", "eslint-visitor-keys": "^4.0.0", "espree": "^10.0.0", "postcss": "^8.4.49", "postcss-scss": "^4.0.9", "postcss-selector-parser": "^7.0.0", "semver": "^7.7.2" }, "peerDependencies": { "svelte": "^3.37.0 || ^4.0.0 || ^5.0.0" }, "optionalPeers": ["svelte"] }, "sha512-qoB1ehychT6OxEtQAqc/guSqLS20SlA53Uijl7x375s8nlUT0lb9ol/gzraEEatQwsyPTJo87s2CmKL9Xab+Uw=="],
 
+    "svelte-sonner": ["svelte-sonner@1.1.0", "", { "dependencies": { "runed": "^0.28.0" }, "peerDependencies": { "svelte": "^5.0.0" } }, "sha512-3lYM6ZIqWe+p9vwwWHGWP/ZdvHiUtzURsud2quIxivrX4rvpXh6i+geBGn0m3JS6KwW6W8VgbOl3xQMcDuh6gg=="],
+
     "svelte-toolbelt": ["svelte-toolbelt@0.10.6", "", { "dependencies": { "clsx": "^2.1.1", "runed": "^0.35.1", "style-to-object": "^1.0.8" }, "peerDependencies": { "svelte": "^5.30.2" } }, "sha512-YWuX+RE+CnWYx09yseAe4ZVMM7e7GRFZM6OYWpBKOb++s+SQ8RBIMMe+Bs/CznBMc0QPLjr+vDBxTAkozXsFXQ=="],
 
     "sveltekit-superforms": ["sveltekit-superforms@2.30.1", "", { "dependencies": { "devalue": "^5.6.4", "memoize-weak": "^1.0.2", "ts-deepmerge": "^7.0.3" }, "optionalDependencies": { "@exodus/schemasafe": "^1.3.0", "@standard-schema/spec": "^1.1.0", "@typeschema/class-validator": "^0.3.0", "@valibot/to-json-schema": "^1.6.0", "@vinejs/vine": "^3.0.1", "arktype": "^2.2.0", "class-validator": "^0.14.4", "effect": "^3.21.0", "joi": "^17.13.3", "json-schema-to-ts": "^3.1.1", "superstruct": "^2.0.2", "typebox": "^1.1.6", "valibot": "^1.3.1", "yup": "^1.7.1", "zod": "^4.3.6", "zod-v3-to-json-schema": "^4.0.0" }, "peerDependencies": { "@sveltejs/kit": "1.x || 2.x", "svelte": "3.x || 4.x || >=5.0.0-next.51" } }, "sha512-wBzyqsE0idvEJWuNJ+HCiAtdxa7Z55GZ8jmtlVHJfonrk9bRYC49MoPaloYyFoYuU3QPy6Omna/Qzn1kaIkgew=="],
@@ -783,6 +786,8 @@
     "mode-watcher/runed": ["runed@0.25.0", "", { "dependencies": { "esm-env": "^1.0.0" }, "peerDependencies": { "svelte": "^5.7.0" } }, "sha512-7+ma4AG9FT2sWQEA0Egf6mb7PBT2vHyuHail1ie8ropfSjvZGtEAx8YTmUjv/APCsdRRxEVvArNjALk9zFSOrg=="],
 
     "mode-watcher/svelte-toolbelt": ["svelte-toolbelt@0.7.1", "", { "dependencies": { "clsx": "^2.1.1", "runed": "^0.23.2", "style-to-object": "^1.0.8" }, "peerDependencies": { "svelte": "^5.0.0" } }, "sha512-HcBOcR17Vx9bjaOceUvxkY3nGmbBmCBBbuWLLEWO6jtmWH8f/QoWmbyUfQZrpDINH39en1b8mptfPQT9VKQ1xQ=="],
+
+    "svelte-sonner/runed": ["runed@0.28.0", "", { "dependencies": { "esm-env": "^1.0.0" }, "peerDependencies": { "svelte": "^5.7.0" } }, "sha512-k2xx7RuO9hWcdd9f+8JoBeqWtYrm5CALfgpkg2YDB80ds/QE4w0qqu34A7fqiAwiBBSBQOid7TLxwxVC27ymWQ=="],
 
     "@esbuild-kit/core-utils/esbuild/@esbuild/android-arm": ["@esbuild/android-arm@0.18.20", "", { "os": "android", "cpu": "arm" }, "sha512-fyi7TDI/ijKKNZTUJAQqiG5T7YjJXgnzkURqmGj13C6dCqckZBLdl4h7bkhHt/t0WP+zO9/zwroDvANaOqO5Sw=="],
 
