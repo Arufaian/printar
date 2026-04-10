@@ -6,6 +6,8 @@
 	import { signupSchema, type SignUpSchema } from '$lib/validation/auth/sign-up.schema';
 	import { type SuperValidated, type Infer, superForm } from 'sveltekit-superforms';
 	import { zod4Client } from 'sveltekit-superforms/adapters';
+	import { toast } from 'svelte-sonner';
+	import { Spinner } from '$lib/components/ui/spinner/index.js';
 
 	import { Input } from '$lib/components/ui/input/index.js';
 	import type { HTMLAttributes } from 'svelte/elements';
@@ -19,10 +21,21 @@
 	const initialForm = () => data.form;
 
 	const form = superForm(initialForm(), {
-		validators: zod4Client(signupSchema)
+		validators: zod4Client(signupSchema),
+		multipleSubmits: 'prevent',
+
+		onUpdated({ form }) {
+			if (form.message) {
+				if (form.message.type === 'success') {
+					toast.success(form.message.text);
+				} else if (form.message.type === 'error') {
+					toast.error(form.message.text);
+				}
+			}
+		}
 	});
 
-	const { form: formData, enhance } = form;
+	const { form: formData, enhance, submitting } = form;
 </script>
 
 <div class={cn('flex flex-col gap-6', className)} {...restProps}>
@@ -81,7 +94,14 @@
 				</div>
 
 				<div class="mt-2 flex flex-col gap-4">
-					<Form.Button>Create Account</Form.Button>
+					<Form.Button disabled={$submitting}>
+						{#if $submitting}
+							<Spinner />
+							loading...
+						{:else}
+							Sign Up
+						{/if}
+					</Form.Button>
 					<div class="text-center text-sm text-muted-foreground">
 						Already have an account? <a href="#/" class="underline underline-offset-4">Sign in</a>
 					</div>

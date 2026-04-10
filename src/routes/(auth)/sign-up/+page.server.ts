@@ -1,6 +1,6 @@
 import type { PageServerLoad, Actions } from './$types.js';
 import { fail } from '@sveltejs/kit';
-import { superValidate } from 'sveltekit-superforms';
+import { superValidate, message } from 'sveltekit-superforms';
 import { signupSchema } from '$lib/validation/auth/sign-up.schema';
 import { zod4 } from 'sveltekit-superforms/adapters';
 
@@ -19,9 +19,35 @@ export const actions: Actions = {
 			});
 		}
 
-		console.log(form);
-		return {
-			form
-		};
+		const { name, email, password } = form.data;
+
+		const { error } = await event.locals.supabase.auth.signUp({
+			email,
+			password,
+			options: {
+				emailRedirectTo: `${event.url.origin}/confirm`,
+				data: {
+					full_name: name
+				}
+			}
+		});
+
+		if (error) {
+			return message(
+				form,
+				{
+					type: 'error',
+					text: error.message || 'Gagal mendaftar. Silakan coba lagi.'
+				},
+				{
+					status: 400
+				}
+			);
+		}
+
+		return message(form, {
+			type: 'success',
+			text: 'Registrasi berhasil! Silakan cek email Anda untuk konfirmasi.'
+		});
 	}
 };
