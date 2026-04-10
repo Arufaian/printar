@@ -22,6 +22,13 @@
       "when": 1775740244504,
       "tag": "0002_create auth trigger for profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1775809862906,
+      "tag": "0003_update_handle_new_user_function",
+      "breakpoints": true
     }
   ]
 }
