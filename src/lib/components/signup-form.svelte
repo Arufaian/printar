@@ -97,13 +97,13 @@
 					<Form.Button disabled={$submitting}>
 						{#if $submitting}
 							<Spinner />
-							loading...
+							Loading...
 						{:else}
-							Sign Up
+							Sign up
 						{/if}
 					</Form.Button>
 					<div class="text-center text-sm text-muted-foreground">
-						Already have an account? <a href="#/" class="underline underline-offset-4">Sign in</a>
+						Sudah punya akun? <a href="/sign-in" class="underline underline-offset-4">Sign in</a>
 					</div>
 				</div>
 			</form>

@@ -121,9 +121,12 @@
 			{:else}
 				<div class="">
 					<a href={resolve('/sign-up')}>
-						<Button class="hidden h-9 px-4 sm:inline-flex" variant="outline">sign up</Button>
+						<Button class="hidden h-9 px-4 sm:inline-flex" variant="outline">Sign up</Button>
 					</a>
-					<Button class="hidden h-9 px-4 sm:inline-flex">Login</Button>
+
+					<a href="/sign-in">
+						<Button class="hidden h-9 px-4 sm:inline-flex">Sign in</Button>
+					</a>
 				</div>
 			{/if}
 		</div>
