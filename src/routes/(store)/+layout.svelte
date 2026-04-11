@@ -6,7 +6,9 @@
 	import { page } from '$app/state';
 	import type { Pathname } from '$app/types';
 	import { onMount } from 'svelte';
-	let { children } = $props();
+	let { children, data } = $props();
+
+	let userProfile = $derived(data.profile);
 
 	let isPhone = $state(false);
 
@@ -17,7 +19,7 @@
 
 <div>
 	<!-- <Navbar /> -->
-	<Navbar />
+	<Navbar {userProfile} />
 
 	{@render children()}
 
