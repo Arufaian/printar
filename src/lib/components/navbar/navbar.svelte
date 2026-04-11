@@ -8,12 +8,16 @@
 	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
+	import * as Avatar from '$lib/components/ui/avatar/index.js';
+	import { getInitials } from '$lib/utils/string';
+	import type { UserProfile } from '$lib/types/user-profile';
 
-	let {
-		cartCount = 3
-	}: {
+	type Props = {
 		cartCount?: number;
-	} = $props();
+		userProfile?: UserProfile | null;
+	};
+
+	let { cartCount = 3, userProfile = null }: Props = $props();
 
 	const sectionLinks: Array<{ href: `/#${string}`; label: string; description: string }> = [
 		{
@@ -110,8 +114,23 @@
 			</Button>
 
 			<ThemeSwitch />
-			<Button class="hidden h-9 px-4 sm:inline-flex" variant="outline">register</Button>
-			<Button class="hidden h-9 px-4 sm:inline-flex">Login</Button>
+
+			{#if userProfile}
+				<Avatar.Root size="lg">
+					<div class="flex w-full items-center justify-center">
+						<Avatar.Fallback class="bg-primary text-primary-foreground"
+							>{getInitials(userProfile.name)}</Avatar.Fallback
+						>
+					</div>
+				</Avatar.Root>
+			{:else}
+				<div class="">
+					<a href={resolve('/sign-up')}>
+						<Button class="hidden h-9 px-4 sm:inline-flex" variant="outline">sign up</Button>
+					</a>
+					<Button class="hidden h-9 px-4 sm:inline-flex">Login</Button>
+				</div>
+			{/if}
 		</div>
 	</div>
 </nav>

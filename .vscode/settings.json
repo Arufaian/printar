@@ -3,5 +3,15 @@
 	"editor.formatOnSave": true,
 	"files.associations": {
 		"*.css": "tailwindcss"
-	}
+	},
+	"sqltools.connections": [
+		{
+			"ssh": "Disabled",
+			"previewLimit": 50,
+			"server": "localhost",
+			"driver": "PostgreSQL",
+			"name": "asu",
+			"connectString": "postgresql://postgres.wfuwlqzshbotdfpupbgx:alfianganteng123@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres"
+		}
+	]
 }
