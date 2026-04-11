@@ -8,9 +8,10 @@
 	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
-	import * as Avatar from '$lib/components/ui/avatar/index.js';
-	import { getInitials } from '$lib/utils/string';
+
 	import type { UserProfile } from '$lib/types/user-profile';
+
+	import UserDropdown from './user-dropdown.svelte';
 
 	type Props = {
 		cartCount?: number;
@@ -116,13 +117,7 @@
 			<ThemeSwitch />
 
 			{#if userProfile}
-				<Avatar.Root size="lg">
-					<div class="flex w-full items-center justify-center">
-						<Avatar.Fallback class="bg-primary text-primary-foreground"
-							>{getInitials(userProfile.name)}</Avatar.Fallback
-						>
-					</div>
-				</Avatar.Root>
+				<UserDropdown {userProfile} />
 			{:else}
 				<div class="">
 					<a href={resolve('/sign-up')}>
