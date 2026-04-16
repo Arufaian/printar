@@ -8,7 +8,7 @@
 	let { children } = $props();
 </script>
 
-<Toaster />
+<Toaster richColors />
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 <ModeWatcher />
