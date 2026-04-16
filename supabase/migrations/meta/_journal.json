@@ -57,6 +57,13 @@
       "when": 1776337682097,
       "tag": "0007_serious_shocker",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1776340414670,
+      "tag": "0008_thankful_shiver_man",
+      "breakpoints": true
     }
   ]
 }
