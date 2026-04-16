@@ -36,6 +36,13 @@
       "when": 1776334832583,
       "tag": "0004_little_stark_industries",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1776335357921,
+      "tag": "0005_dizzy_magus",
+      "breakpoints": true
     }
   ]
 }
