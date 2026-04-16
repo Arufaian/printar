@@ -43,6 +43,13 @@
       "when": 1776335357921,
       "tag": "0005_dizzy_magus",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1776335799090,
+      "tag": "0006_keen_terror",
+      "breakpoints": true
     }
   ]
 }
