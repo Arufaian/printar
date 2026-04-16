@@ -6,6 +6,7 @@ export const variants = pgTable('variants', {
 	id: uuid('id').defaultRandom().primaryKey(),
 	productId: uuid('product_id').references(() => products.id),
 	name: text('name'),
+	imgUrl: text('img_url'),
 	price: integer('price'),
 	stock: integer('stock'),
 	createdAt: timestamp('created_at', { withTimezone: true }).defaultNow()

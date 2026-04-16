@@ -1,0 +1,1 @@
+ALTER TABLE "variants" ADD COLUMN "img_url" text;
