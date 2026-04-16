@@ -6,3 +6,4 @@ export * from './product';
 export * from './variant';
 export * from './option-group';
 export * from './option';
+export * from './order';
