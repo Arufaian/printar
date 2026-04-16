@@ -1,5 +1,8 @@
-export type UserRole = 'customer' | 'admin';
-export type UserProfile = {
+export type UserProfileData = {
 	name: string;
-	role: UserRole;
-} | null;
+	role: 'admin' | 'customer';
+	email: string;
+};
+
+// Tipe yang bisa null (untuk load function)
+export type UserProfile = UserProfileData | null;

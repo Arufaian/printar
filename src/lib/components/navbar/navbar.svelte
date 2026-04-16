@@ -124,7 +124,7 @@
 						<Button class="hidden h-9 px-4 sm:inline-flex" variant="outline">Sign up</Button>
 					</a>
 
-					<a href="/sign-in">
+					<a href={resolve('/sign-in')}>
 						<Button class="hidden h-9 px-4 sm:inline-flex">Sign in</Button>
 					</a>
 				</div>
