@@ -12,6 +12,10 @@
 	import type { UserProfileData } from '$lib/types/user-profile';
 	import { getInitials } from '$lib/utils/string';
 
+	import { toast } from 'svelte-sonner';
+	import { resolve } from '$app/paths';
+	import { enhance } from '$app/forms';
+
 	interface NavUserProps {
 		user: UserProfileData | null;
 	}
@@ -19,7 +23,35 @@
 	let { user }: NavUserProps = $props();
 
 	const sidebar = useSidebar();
+
+	let logoutForm = $state<HTMLFormElement>();
 </script>
+
+<form
+	action={resolve('/(auth)/sign-out')}
+	method="POST"
+	bind:this={logoutForm}
+	use:enhance={() => {
+		return async ({ result, update }) => {
+			if (result.type === 'failure') {
+				const message =
+					typeof result.data?.message === 'string'
+						? result.data.message
+						: 'Gagal logout, silakan coba lagi.';
+				toast.error(message);
+				return;
+			}
+
+			if (result.type === 'error') {
+				toast.error('Terjadi gangguan saat logout. Silakan coba lagi.');
+				return;
+			}
+
+			await update();
+		};
+	}}
+	class="hidden"
+></form>
 
 <Sidebar.Menu>
 	<Sidebar.MenuItem>
@@ -87,7 +119,7 @@
 					</DropdownMenu.Item>
 				</DropdownMenu.Group>
 				<DropdownMenu.Separator />
-				<DropdownMenu.Item>
+				<DropdownMenu.Item variant="destructive" onclick={() => logoutForm?.requestSubmit()}>
 					<LogOutIcon />
 					Log out
 				</DropdownMenu.Item>
