@@ -9,14 +9,11 @@
 	import MapIcon from '@lucide/svelte/icons/map';
 	import Settings2Icon from '@lucide/svelte/icons/settings-2';
 	import SquareTerminalIcon from '@lucide/svelte/icons/square-terminal';
+	import { Gauge } from '@lucide/svelte';
+	import { LayoutGrid } from '@lucide/svelte';
 
 	// This is sample data.
 	const data = {
-		user: {
-			name: 'shadcn',
-			email: 'm@example.com',
-			avatar: '/avatars/shadcn.jpg'
-		},
 		teams: [
 			{
 				name: 'Acme Inc',
@@ -36,10 +33,19 @@
 		],
 		navMain: [
 			{
+				title: 'Dashboard',
+				url: '/admin/dashboard',
+				icon: Gauge
+			},
+			{
+				title: 'Category',
+				url: '/admin/category',
+				icon: LayoutGrid
+			},
+			{
 				title: 'Playground',
 				url: '#',
 				icon: SquareTerminalIcon,
-				isActive: true,
 				items: [
 					{
 						title: 'History',

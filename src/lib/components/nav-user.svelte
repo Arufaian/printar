@@ -64,8 +64,8 @@
 							class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
 							{...props}
 						>
-							<Avatar.Root class="size-8 rounded-lg">
-								<Avatar.Fallback class="rounded-lg">{getInitials(user.name)}</Avatar.Fallback>
+							<Avatar.Root class="size-8 ">
+								<Avatar.Fallback class="">{getInitials(user.name)}</Avatar.Fallback>
 							</Avatar.Root>
 							<div class="grid flex-1 text-start text-sm leading-tight">
 								<span class="truncate font-medium">{user.name}</span>
@@ -85,8 +85,8 @@
 				{#if user}
 					<DropdownMenu.Label class="p-0 font-normal">
 						<div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
-							<Avatar.Root class="size-8 rounded-lg">
-								<Avatar.Fallback class="rounded-lg">{getInitials(user.name)}</Avatar.Fallback>
+							<Avatar.Root class="size-8 ">
+								<Avatar.Fallback class="">{getInitials(user.name)}</Avatar.Fallback>
 							</Avatar.Root>
 							<div class="grid flex-1 text-start text-sm leading-tight">
 								<span class="truncate font-medium">{user.name}</span>
