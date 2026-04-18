@@ -3,7 +3,19 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 
-	let { id }: { id: string } = $props();
+	let {
+		id,
+		name,
+		slug,
+		onEdit,
+		onDelete
+	}: {
+		id: string;
+		name: string | null;
+		slug: string | null;
+		onEdit: (category: { id: string; name: string | null; slug: string | null }) => void;
+		onDelete: (category: { id: string; name: string | null; slug: string | null }) => void;
+	} = $props();
 </script>
 
 <DropdownMenu.Root>
@@ -18,12 +30,11 @@
 	<DropdownMenu.Content>
 		<DropdownMenu.Group>
 			<DropdownMenu.Label>Actions</DropdownMenu.Label>
-			<DropdownMenu.Item onclick={() => navigator.clipboard.writeText(id)}>
-				Copy category ID
-			</DropdownMenu.Item>
+			<DropdownMenu.Item onclick={() => onEdit({ id, name, slug })}>Edit category</DropdownMenu.Item
+			>
+			<DropdownMenu.Item variant="destructive" onclick={() => onDelete({ id, name, slug })}
+				>Delete category</DropdownMenu.Item
+			>
 		</DropdownMenu.Group>
-		<DropdownMenu.Separator />
-		<DropdownMenu.Item>View category</DropdownMenu.Item>
-		<DropdownMenu.Item>View category details</DropdownMenu.Item>
 	</DropdownMenu.Content>
 </DropdownMenu.Root>

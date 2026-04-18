@@ -1,18 +1,24 @@
 import type { ColumnDef } from '@tanstack/table-core';
-import { createRawSnippet } from 'svelte';
-import { renderComponent, renderSnippet } from '$lib/components/ui/data-table/index.js';
+import { renderComponent } from '$lib/components/ui/data-table/index.js';
 import DataTableActions from './data-table-actions.svelte';
 import DataTableCheckbox from './data-table-checkbox.svelte';
 import DataTableEmailButton from './data-table-email-button.svelte';
 
 export type Category = {
 	id: string;
-	amount: number;
-	status: 'pending' | 'processing' | 'success' | 'failed';
-	email: string;
+	name: string | null;
+	slug: string | null;
 };
 
-export const columns: ColumnDef<Category>[] = [
+type CreateColumnsOptions = {
+	onEdit: (category: Category) => void;
+	onDelete: (category: Category) => void;
+};
+
+export const createColumns = ({
+	onEdit,
+	onDelete
+}: CreateColumnsOptions): ColumnDef<Category>[] => [
 	{
 		id: 'select',
 		header: ({ table }) =>
@@ -33,60 +39,36 @@ export const columns: ColumnDef<Category>[] = [
 		enableHiding: false
 	},
 	{
-		accessorKey: 'status',
-		header: 'Status'
+		accessorKey: 'id',
+		header: 'id'
 	},
-
 	{
-		accessorKey: 'email',
+		accessorKey: 'name',
 		header: ({ column }) =>
 			renderComponent(DataTableEmailButton, {
-				onclick: column.getToggleSortingHandler()
-			}),
-		cell: ({ row }) => {
-			const emailSnippet = createRawSnippet<[{ email: string }]>((getEmail) => {
-				const { email } = getEmail();
-				return {
-					render: () => `<div class="lowercase">${email}</div>`
-				};
-			});
-
-			return renderSnippet(emailSnippet, {
-				email: row.original.email
-			});
-		}
+				onclick: column.getToggleSortingHandler(),
+				label: 'Name'
+			})
 	},
-
 	{
-		accessorKey: 'amount',
-		header: () => {
-			const amountHeaderSnippet = createRawSnippet(() => ({
-				render: () => `<div class="text-end">Amount</div>`
-			}));
-			return renderSnippet(amountHeaderSnippet);
-		},
-		cell: ({ row }) => {
-			const formatter = new Intl.NumberFormat('en-US', {
-				style: 'currency',
-				currency: 'USD'
-			});
-
-			const amountCellSnippet = createRawSnippet<[{ amount: number }]>((getAmount) => {
-				const { amount } = getAmount();
-				const formatted = formatter.format(amount);
-				return {
-					render: () => `<div class="text-end font-medium">${formatted}</div>`
-				};
-			});
-
-			return renderSnippet(amountCellSnippet, {
-				amount: row.original.amount
-			});
-		}
+		accessorKey: 'slug',
+		header: ({ column }) =>
+			renderComponent(DataTableEmailButton, {
+				onclick: column.getToggleSortingHandler(),
+				label: 'Slug'
+			})
 	},
 	{
 		id: 'actions',
+		header: 'Actions',
 		enableHiding: false,
-		cell: ({ row }) => renderComponent(DataTableActions, { id: row.original.id })
+		cell: ({ row }) =>
+			renderComponent(DataTableActions, {
+				id: row.original.id,
+				name: row.original.name,
+				slug: row.original.slug,
+				onEdit,
+				onDelete
+			})
 	}
 ];
