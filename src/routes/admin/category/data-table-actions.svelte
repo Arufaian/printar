@@ -19,11 +19,11 @@
 		<DropdownMenu.Group>
 			<DropdownMenu.Label>Actions</DropdownMenu.Label>
 			<DropdownMenu.Item onclick={() => navigator.clipboard.writeText(id)}>
-				Copy payment ID
+				Copy category ID
 			</DropdownMenu.Item>
 		</DropdownMenu.Group>
 		<DropdownMenu.Separator />
-		<DropdownMenu.Item>View customer</DropdownMenu.Item>
-		<DropdownMenu.Item>View payment details</DropdownMenu.Item>
+		<DropdownMenu.Item>View category</DropdownMenu.Item>
+		<DropdownMenu.Item>View category details</DropdownMenu.Item>
 	</DropdownMenu.Content>
 </DropdownMenu.Root>

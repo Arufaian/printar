@@ -1,12 +1,12 @@
 export async function load() {
-	type Payment = {
+	type Category = {
 		id: string;
 		amount: number;
 		status: 'pending' | 'processing' | 'success' | 'failed';
 		email: string;
 	};
 
-	const payments: Payment[] = [
+	const categories: Category[] = [
 		{
 			id: '728ed52f',
 			amount: 100,
@@ -105,6 +105,6 @@ export async function load() {
 		}
 	];
 	return {
-		payments
+		categories
 	};
 }

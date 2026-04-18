@@ -1,18 +1,19 @@
 <script lang="ts" generics="TData, TValue">
 	import {
 		type ColumnDef,
-		type PaginationState,
-		type SortingState,
 		type ColumnFiltersState,
-		type VisibilityState,
+		type PaginationState,
 		type RowSelectionState,
+		type SortingState,
+		type VisibilityState,
 		getCoreRowModel,
+		getFilteredRowModel,
 		getPaginationRowModel,
-		getSortedRowModel,
-		getFilteredRowModel
+		getSortedRowModel
 	} from '@tanstack/table-core';
 
-	import { createSvelteTable, FlexRender } from '$lib/components/ui/data-table/index.js';
+	import { createSvelteTable } from './data-table.svelte.js';
+	import FlexRender from './flex-render.svelte';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
@@ -21,9 +22,28 @@
 	type DataTableProps<TData, TValue> = {
 		data: TData[];
 		columns: ColumnDef<TData, TValue>[];
+		filterColumnId?: string;
+		filterPlaceholder?: string;
+		showColumnToggle?: boolean;
+		showSelectionSummary?: boolean;
+		showPagination?: boolean;
+		columnToggleLabel?: string;
+		emptyMessage?: string;
+		pageSize?: number;
 	};
 
-	let { data, columns }: DataTableProps<TData, TValue> = $props();
+	let {
+		data,
+		columns,
+		filterColumnId = 'email',
+		filterPlaceholder = 'Filter...',
+		showColumnToggle = true,
+		showSelectionSummary = true,
+		showPagination = true,
+		columnToggleLabel = 'Columns',
+		emptyMessage = 'No results.',
+		pageSize = 10
+	}: DataTableProps<TData, TValue> = $props();
 
 	let pagination = $state<PaginationState>({ pageIndex: 0, pageSize: 10 });
 	let sorting = $state<SortingState>([]);
@@ -31,11 +51,19 @@
 	let columnVisibility = $state<VisibilityState>({});
 	let rowSelection = $state<RowSelectionState>({});
 
+	$effect(() => {
+		if (pagination.pageSize !== pageSize) {
+			pagination = { ...pagination, pageSize };
+		}
+	});
+
 	const table = createSvelteTable({
 		get data() {
 			return data;
 		},
-		columns,
+		get columns() {
+			return columns;
+		},
 		state: {
 			get pagination() {
 				return pagination;
@@ -93,35 +121,41 @@
 			}
 		}
 	});
+
+	const getFilterColumn = () => table.getColumn(filterColumnId);
 </script>
 
 <div>
 	<div class="flex items-center py-4">
-		<Input
-			placeholder="Filter emails..."
-			value={table.getColumn('email')?.getFilterValue() as string}
-			onchange={(e) => table.getColumn('email')?.setFilterValue(e.currentTarget.value)}
-			oninput={(e) => table.getColumn('email')?.setFilterValue(e.currentTarget.value)}
-			class="max-w-sm"
-		/>
+		{#if filterColumnId}
+			<Input
+				placeholder={filterPlaceholder}
+				value={(getFilterColumn()?.getFilterValue() as string) ?? ''}
+				onchange={(e) => getFilterColumn()?.setFilterValue(e.currentTarget.value)}
+				oninput={(e) => getFilterColumn()?.setFilterValue(e.currentTarget.value)}
+				class="max-w-sm"
+			/>
+		{/if}
 
-		<DropdownMenu.Root>
-			<DropdownMenu.Trigger>
-				{#snippet child({ props })}
-					<Button {...props} variant="outline" class="ms-auto">Columns</Button>
-				{/snippet}
-			</DropdownMenu.Trigger>
-			<DropdownMenu.Content align="end">
-				{#each table.getAllColumns().filter((col) => col.getCanHide()) as column (column.id)}
-					<DropdownMenu.CheckboxItem
-						class="capitalize"
-						bind:checked={() => column.getIsVisible(), (v) => column.toggleVisibility(!!v)}
-					>
-						{column.id}
-					</DropdownMenu.CheckboxItem>
-				{/each}
-			</DropdownMenu.Content>
-		</DropdownMenu.Root>
+		{#if showColumnToggle}
+			<DropdownMenu.Root>
+				<DropdownMenu.Trigger>
+					{#snippet child({ props })}
+						<Button {...props} variant="outline" class="ms-auto">{columnToggleLabel}</Button>
+					{/snippet}
+				</DropdownMenu.Trigger>
+				<DropdownMenu.Content align="end">
+					{#each table.getAllColumns().filter((col) => col.getCanHide()) as column (column.id)}
+						<DropdownMenu.CheckboxItem
+							class="capitalize"
+							bind:checked={() => column.getIsVisible(), (v) => column.toggleVisibility(!!v)}
+						>
+							{column.id}
+						</DropdownMenu.CheckboxItem>
+					{/each}
+				</DropdownMenu.Content>
+			</DropdownMenu.Root>
+		{/if}
 	</div>
 
 	<div class="rounded-md border">
@@ -153,34 +187,41 @@
 					</Table.Row>
 				{:else}
 					<Table.Row>
-						<Table.Cell colspan={columns.length} class="h-24 text-center">No results.</Table.Cell>
+						<Table.Cell colspan={columns.length} class="h-24 text-center">{emptyMessage}</Table.Cell
+						>
 					</Table.Row>
 				{/each}
 			</Table.Body>
 		</Table.Root>
 	</div>
-	<div class="flex items-center justify-end space-x-2 py-4">
-		<div class="flex-1 text-sm text-muted-foreground">
-			{table.getFilteredSelectedRowModel().rows.length}
-			of
-			{table.getFilteredRowModel().rows.length} row(s) selected.
-		</div>
 
-		<Button
-			variant="outline"
-			size="sm"
-			onclick={() => table.previousPage()}
-			disabled={!table.getCanPreviousPage()}
-		>
-			Previous
-		</Button>
-		<Button
-			variant="outline"
-			size="sm"
-			onclick={() => table.nextPage()}
-			disabled={!table.getCanNextPage()}
-		>
-			Next
-		</Button>
-	</div>
+	{#if showPagination || showSelectionSummary}
+		<div class="flex items-center justify-end space-x-2 py-4">
+			{#if showSelectionSummary}
+				<div class="flex-1 text-sm text-muted-foreground">
+					{table.getFilteredSelectedRowModel().rows.length} of
+					{table.getFilteredRowModel().rows.length} row(s) selected.
+				</div>
+			{/if}
+
+			{#if showPagination}
+				<Button
+					variant="outline"
+					size="sm"
+					onclick={() => table.previousPage()}
+					disabled={!table.getCanPreviousPage()}
+				>
+					Previous
+				</Button>
+				<Button
+					variant="outline"
+					size="sm"
+					onclick={() => table.nextPage()}
+					disabled={!table.getCanNextPage()}
+				>
+					Next
+				</Button>
+			{/if}
+		</div>
+	{/if}
 </div>

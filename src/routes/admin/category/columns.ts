@@ -1,25 +1,32 @@
 import type { ColumnDef } from '@tanstack/table-core';
 import { createRawSnippet } from 'svelte';
-import { renderSnippet } from '$lib/components/ui/data-table/index.js';
-
-import { renderComponent } from '$lib/components/ui/data-table/index.js';
+import { renderComponent, renderSnippet } from '$lib/components/ui/data-table/index.js';
 import DataTableActions from './data-table-actions.svelte';
-import { Checkbox } from '$lib/components/ui/checkbox/index.js';
+import DataTableCheckbox from './data-table-checkbox.svelte';
+import DataTableEmailButton from './data-table-email-button.svelte';
 
-export const columns: ColumnDef<Payment>[] = [
+export type Category = {
+	id: string;
+	amount: number;
+	status: 'pending' | 'processing' | 'success' | 'failed';
+	email: string;
+};
+
+export const columns: ColumnDef<Category>[] = [
 	{
 		id: 'select',
 		header: ({ table }) =>
-			renderComponent(Checkbox, {
+			renderComponent(DataTableCheckbox, {
 				checked: table.getIsAllPageRowsSelected(),
 				indeterminate: table.getIsSomePageRowsSelected() && !table.getIsAllPageRowsSelected(),
-				onCheckedChange: (value) => table.toggleAllPageRowsSelected(!!value),
+				onCheckedChange: (value: boolean | 'indeterminate') =>
+					table.toggleAllPageRowsSelected(!!value),
 				'aria-label': 'Select all'
 			}),
 		cell: ({ row }) =>
-			renderComponent(Checkbox, {
+			renderComponent(DataTableCheckbox, {
 				checked: row.getIsSelected(),
-				onCheckedChange: (value) => row.toggleSelected(!!value),
+				onCheckedChange: (value: boolean | 'indeterminate') => row.toggleSelected(!!value),
 				'aria-label': 'Select row'
 			}),
 		enableSorting: false,
@@ -27,12 +34,27 @@ export const columns: ColumnDef<Payment>[] = [
 	},
 	{
 		accessorKey: 'status',
-		header: 'status'
+		header: 'Status'
 	},
 
 	{
 		accessorKey: 'email',
-		header: 'Email'
+		header: ({ column }) =>
+			renderComponent(DataTableEmailButton, {
+				onclick: column.getToggleSortingHandler()
+			}),
+		cell: ({ row }) => {
+			const emailSnippet = createRawSnippet<[{ email: string }]>((getEmail) => {
+				const { email } = getEmail();
+				return {
+					render: () => `<div class="lowercase">${email}</div>`
+				};
+			});
+
+			return renderSnippet(emailSnippet, {
+				email: row.original.email
+			});
+		}
 	},
 
 	{
@@ -64,9 +86,7 @@ export const columns: ColumnDef<Payment>[] = [
 	},
 	{
 		id: 'actions',
-		cell: ({ row }) => {
-			// You can pass whatever you need from `row.original` to the component
-			return renderComponent(DataTableActions, { id: row.original.id });
-		}
+		enableHiding: false,
+		cell: ({ row }) => renderComponent(DataTableActions, { id: row.original.id })
 	}
 ];
