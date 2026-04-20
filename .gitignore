@@ -25,3 +25,7 @@ vite.config.ts.timestamp-*
 # ai agent
 .agents
 .opencode
+
+# others
+dataTable.md
+crud.md

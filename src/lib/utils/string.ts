@@ -14,3 +14,19 @@ export function getInitials(fullName: string): string {
 
 	return `${firstInitial}${lastInitial}`.toUpperCase();
 }
+
+export function generateSlug(text: string): string {
+	if (!text) return '';
+
+	return text
+		.toString()
+		.normalize('NFD') // pisahkan aksen
+		.replace(/[\u0300-\u036f]/g, '') // hapus aksen
+		.toLowerCase()
+		.trim()
+		.replace(/\s+/g, '-')
+		.replace(/[^a-z0-9-]+/g, '')
+		.replace(/--+/g, '-')
+		.replace(/^-+/, '')
+		.replace(/-+$/, '');
+}
