@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { deserialize } from '$app/forms';
+	import { enhance as kitEnhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
+	import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 	import { DataTable } from '$lib/components/ui/data-table/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { zod4Client } from 'sveltekit-superforms/adapters';
@@ -12,19 +13,14 @@
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import * as Form from '$lib/components/ui/form/index.js';
 	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
+	import { generateSlug } from '$lib/utils/string.js';
 
 	let { data }: { data: PageData } = $props();
 
 	let open = $state(false);
 	let mode = $state<'create' | 'edit'>('create');
-
-	const slugify = (value: string) =>
-		value
-			.toLowerCase()
-			.trim()
-			.replace(/[^a-z0-9\s-]/g, '')
-			.replace(/\s+/g, '-')
-			.replace(/-+/g, '-');
+	let deleteDialogOpen = $state(false);
+	let selectedCategory = $state<Category | null>(null);
 
 	const getInitialForm = () => data.form;
 	const getTableData = (): Category[] =>
@@ -52,7 +48,7 @@
 		}
 	});
 
-	const { form: formData, enhance, submitting } = form;
+	const { form: formData, enhance: enhanceUpsert, submitting } = form;
 
 	const openCreateModal = () => {
 		mode = 'create';
@@ -66,64 +62,68 @@
 		mode = 'edit';
 		$formData.id = category.id;
 		$formData.name = category.name ?? '';
-		$formData.slug = slugify(category.name ?? '');
+		$formData.slug = generateSlug(category.name ?? '');
 		open = true;
 	};
 
-	const onDelete = async (category: Category) => {
-		const categoryName = category.name ?? category.slug ?? 'kategori ini';
-		const confirmed = confirm(`Hapus ${categoryName}? Tindakan ini tidak dapat dibatalkan.`);
-
-		if (!confirmed) {
-			return;
-		}
-
-		const payload = new FormData();
-		payload.set('id', category.id);
-
-		const response = await fetch('?/delete', {
-			method: 'POST',
-			body: payload,
-			headers: {
-				'x-sveltekit-action': 'true'
-			}
-		});
-
-		const result = deserialize(await response.text());
-
-		if (result.type === 'success') {
-			const message =
-				typeof result.data?.text === 'string' ? result.data.text : 'Kategori berhasil dihapus.';
-
-			toast.success(message);
-			await invalidateAll();
-			return;
-		}
-
-		if (result.type === 'failure') {
-			const message =
-				typeof result.data?.message === 'string'
-					? result.data.message
-					: 'Gagal menghapus kategori. Silakan coba lagi.';
-
-			toast.error(message);
-			return;
-		}
-
-		toast.error('Terjadi gangguan saat menghapus kategori. Silakan coba lagi.');
+	const onDelete = (category: Category) => {
+		selectedCategory = category;
+		deleteDialogOpen = true;
 	};
 
 	const columns = createColumns({ onEdit, onDelete });
 
 	$effect(() => {
-		const generatedSlug = slugify(($formData.name ?? '').toString());
+		const generatedSlug = generateSlug(($formData.name ?? '').toString());
 		if ($formData.slug !== generatedSlug) {
 			$formData.slug = generatedSlug;
+		}
+	});
+
+	$effect(() => {
+		if (!deleteDialogOpen) {
+			selectedCategory = null;
 		}
 	});
 </script>
 
 <section>
+	<form
+		id="delete-category-form"
+		method="POST"
+		action="?/delete"
+		class="hidden"
+		use:kitEnhance={() => {
+			return async ({ result, update }) => {
+				if (result.type === 'success') {
+					const message =
+						typeof result.data?.text === 'string' ? result.data.text : 'Kategori berhasil dihapus.';
+
+					toast.success(message);
+					deleteDialogOpen = false;
+					selectedCategory = null;
+					await update();
+					await invalidateAll();
+					return;
+				}
+
+				if (result.type === 'failure') {
+					const message =
+						typeof result.data?.message === 'string'
+							? result.data.message
+							: 'Gagal menghapus kategori. Silakan coba lagi.';
+
+					toast.error(message);
+					return;
+				}
+
+				toast.error('Terjadi gangguan saat menghapus kategori. Silakan coba lagi.');
+			};
+		}}
+	>
+		<input type="hidden" name="id" value={selectedCategory?.id ?? ''} />
+	</form>
+
 	<div>
 		<Dialog.Root bind:open>
 			<Dialog.Trigger>
@@ -141,7 +141,7 @@
 					</Dialog.Description>
 				</Dialog.Header>
 
-				<form method="POST" action="?/upsert" use:enhance class="space-y-4">
+				<form method="POST" action="?/upsert" use:enhanceUpsert class="space-y-4">
 					<input type="hidden" name="id" bind:value={$formData.id} />
 
 					<Form.Field {form} name="name">
@@ -181,6 +181,24 @@
 			</Dialog.Content>
 		</Dialog.Root>
 	</div>
+
+	<AlertDialog.Root bind:open={deleteDialogOpen}>
+		<AlertDialog.Content>
+			<AlertDialog.Header>
+				<AlertDialog.Title>Delete category?</AlertDialog.Title>
+				<AlertDialog.Description>
+					Kategori <strong>{selectedCategory?.name ?? selectedCategory?.slug ?? '-'}</strong> akan dihapus
+					permanen. Tindakan ini tidak dapat dibatalkan.
+				</AlertDialog.Description>
+			</AlertDialog.Header>
+			<AlertDialog.Footer>
+				<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+				<AlertDialog.Action type="submit" form="delete-category-form" variant="destructive">
+					Delete category
+				</AlertDialog.Action>
+			</AlertDialog.Footer>
+		</AlertDialog.Content>
+	</AlertDialog.Root>
 
 	<DataTable
 		data={getTableData()}

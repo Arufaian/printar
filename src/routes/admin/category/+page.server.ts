@@ -5,8 +5,7 @@ import { categories } from '$lib/server/db/schema';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import { message, superValidate } from 'sveltekit-superforms';
 import { insertCategoriesSchema } from '$lib/validation/category/category.schema';
-import { eq } from 'drizzle-orm';
-// import { PostgresError } from 'postgres';
+import { eq, DrizzleQueryError } from 'drizzle-orm';
 
 export const load: PageServerLoad = async (event) => {
 	const response = await db.select().from(categories);
@@ -54,18 +53,16 @@ export const actions = {
 				text: 'Kategori berhasil ditambahkan.'
 			});
 		} catch (error) {
-			// if (error instanceof PostgresError && error.code === '23505') {
-			// 	return message(
-			// 		form,
-			// 		{
-			// 			type: 'error',
-			// 			text: 'Slug kategori sudah digunakan. Gunakan nama lain.'
-			// 		},
-			// 		{ status: 400 }
-			// 	);
-			// }
-
-			console.error(error);
+			if (error instanceof DrizzleQueryError) {
+				return message(
+					form,
+					{
+						type: 'error',
+						text: 'Data slug sudah ada. Silakan coba lagi.'
+					},
+					{ status: 500 }
+				);
+			}
 
 			return message(
 				form,
