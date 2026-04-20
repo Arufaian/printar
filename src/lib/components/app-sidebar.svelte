@@ -11,6 +11,7 @@
 	import SquareTerminalIcon from '@lucide/svelte/icons/square-terminal';
 	import { Gauge } from '@lucide/svelte';
 	import { LayoutGrid } from '@lucide/svelte';
+	import { Package } from '@lucide/svelte';
 
 	// This is sample data.
 	const data = {
@@ -41,6 +42,11 @@
 				title: 'Category',
 				url: '/admin/category',
 				icon: LayoutGrid
+			},
+			{
+				title: 'Product',
+				url: '/admin/product',
+				icon: Package
 			},
 			{
 				title: 'Playground',
