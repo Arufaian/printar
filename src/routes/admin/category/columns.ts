@@ -2,7 +2,7 @@ import type { ColumnDef } from '@tanstack/table-core';
 import { renderComponent } from '$lib/components/ui/data-table/index.js';
 import DataTableActions from './data-table-actions.svelte';
 import DataTableCheckbox from './data-table-checkbox.svelte';
-import DataTableEmailButton from './data-table-email-button.svelte';
+import DataTableSorting from './data-table-sorting.svelte';
 
 export type Category = {
 	id: string;
@@ -45,7 +45,7 @@ export const createColumns = ({
 	{
 		accessorKey: 'name',
 		header: ({ column }) =>
-			renderComponent(DataTableEmailButton, {
+			renderComponent(DataTableSorting, {
 				onclick: column.getToggleSortingHandler(),
 				label: 'Name'
 			})
@@ -53,7 +53,7 @@ export const createColumns = ({
 	{
 		accessorKey: 'slug',
 		header: ({ column }) =>
-			renderComponent(DataTableEmailButton, {
+			renderComponent(DataTableSorting, {
 				onclick: column.getToggleSortingHandler(),
 				label: 'Slug'
 			})

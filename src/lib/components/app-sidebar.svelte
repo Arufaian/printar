@@ -44,8 +44,8 @@
 				icon: LayoutGrid
 			},
 			{
-				title: 'Product',
-				url: '/admin/product',
+				title: 'Products',
+				url: '/admin/products',
 				icon: Package
 			},
 			{

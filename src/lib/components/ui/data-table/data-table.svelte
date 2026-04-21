@@ -144,7 +144,7 @@
 						<Button {...props} variant="outline" class="ms-auto">{columnToggleLabel}</Button>
 					{/snippet}
 				</DropdownMenu.Trigger>
-				<DropdownMenu.Content align="end">
+				<DropdownMenu.Content align="end" class="w-44">
 					{#each table.getAllColumns().filter((col) => col.getCanHide()) as column (column.id)}
 						<DropdownMenu.CheckboxItem
 							class="capitalize"
