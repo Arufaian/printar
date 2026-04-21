@@ -4,12 +4,14 @@
 	import OptionGroupCard from './option-group-card.svelte';
 
 	let {
+		form,
 		optionGroups = $bindable(),
 		onAddOptionGroup,
 		onRemoveOptionGroup,
 		onAddOption,
 		onRemoveOption
 	}: {
+		form: any;
 		optionGroups: ProductOptionGroup[];
 		onAddOptionGroup: () => void;
 		onRemoveOptionGroup: (groupIndex: number) => void;
@@ -30,6 +32,7 @@
 	<div class="mt-5 space-y-4">
 		{#each optionGroups as _group, groupIndex (_group)}
 			<OptionGroupCard
+				{form}
 				bind:group={optionGroups[groupIndex]}
 				{groupIndex}
 				canRemoveGroup={optionGroups.length > 1}

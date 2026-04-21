@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
+	import * as Form from '$lib/components/ui/form/index.js';
 	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
 	import type { ProductOptionGroup } from './types';
 	import OptionItemRow from './option-item-row.svelte';
 
 	let {
+		form,
 		group = $bindable(),
 		groupIndex,
 		canRemoveGroup,
@@ -13,6 +14,7 @@
 		onAddOption,
 		onRemoveOption
 	}: {
+		form: any;
 		group: ProductOptionGroup;
 		groupIndex: number;
 		canRemoveGroup: boolean;
@@ -30,13 +32,19 @@
 		</Button>
 	</div>
 	<div class="space-y-4">
-		<div class="space-y-4">
-			<Label for={'group-name-' + groupIndex}>Nama Group</Label>
-			<Input id={'group-name-' + groupIndex} bind:value={group.name} placeholder="Bungkus Kado" />
-		</div>
+		<Form.Field {form} name={`optionGroups[${groupIndex}].name`}>
+			<Form.Control>
+				{#snippet children({ props })}
+					<Form.Label>Nama Group</Form.Label>
+					<Input {...props} bind:value={group.name} placeholder="Bungkus Kado" />
+				{/snippet}
+			</Form.Control>
+			<Form.FieldErrors />
+		</Form.Field>
 		<div class="space-y-4">
 			{#each group.options as _option, optionIndex (_option)}
 				<OptionItemRow
+					{form}
 					bind:option={group.options[optionIndex]}
 					{groupIndex}
 					{optionIndex}

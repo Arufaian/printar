@@ -112,5 +112,4 @@ export const productSchema = z
 		}
 	});
 
-// export type UpsertProductSchema = z.infer<typeof productSchema>;
-export type UpsertProductSchema = typeof productSchema;
+export type UpsertProductSchema = z.infer<typeof productSchema>;

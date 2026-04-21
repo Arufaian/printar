@@ -4,10 +4,12 @@
 	import VariantItemCard from './variant-item-card.svelte';
 
 	let {
+		form,
 		variants = $bindable(),
 		onAddVariant,
 		onRemoveVariant
 	}: {
+		form: any;
 		variants: ProductVariant[];
 		onAddVariant: () => void;
 		onRemoveVariant: (index: number) => void;
@@ -26,6 +28,7 @@
 	<div class="mt-5 space-y-4">
 		{#each variants as _variant, index (_variant)}
 			<VariantItemCard
+				{form}
 				bind:variant={variants[index]}
 				{index}
 				canRemove={variants.length > 1}
