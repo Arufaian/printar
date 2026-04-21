@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { PUBLIC_BUCKET_NAME } from '$env/static/public';
+
 	import { Image } from '@lucide/svelte';
 	import { page } from '$app/state';
 	import { onDestroy } from 'svelte';
@@ -9,7 +11,6 @@
 	import { Input } from '$lib/components/ui/input';
 	import type { ProductSuperForm, ProductVariant } from '$lib/types/product-form';
 
-	const BUCKET_NAME = 'ikumer';
 	const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024;
 
 	let {
@@ -53,7 +54,7 @@
 
 		try {
 			const parsedUrl = new URL(publicUrl);
-			const prefix = `/storage/v1/object/public/${BUCKET_NAME}/`;
+			const prefix = `/storage/v1/object/public/${PUBLIC_BUCKET_NAME}/`;
 			if (!parsedUrl.pathname.startsWith(prefix)) return null;
 
 			return decodeURIComponent(parsedUrl.pathname.slice(prefix.length));
@@ -120,7 +121,7 @@
 			const filePath = createVariantFilePath(file.name);
 
 			const { error: uploadError } = await supabase.storage
-				.from(BUCKET_NAME)
+				.from(PUBLIC_BUCKET_NAME)
 				.upload(filePath, file, {
 					upsert: false,
 					contentType: file.type
@@ -131,14 +132,14 @@
 			}
 
 			// URL ini yang nanti disimpan ke form dan akan ikut ke server saat submit.
-			const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
+			const { data } = supabase.storage.from(PUBLIC_BUCKET_NAME).getPublicUrl(filePath);
 			updateVariant({ img_url: data.publicUrl });
 
 			// Jika sebelumnya ada gambar dari bucket yang sama, hapus file lama agar tidak menumpuk.
 			const previousObjectPath = getBucketObjectPathFromPublicUrl(previousImageUrl);
 			if (previousObjectPath && previousObjectPath !== filePath) {
 				const { error: deleteError } = await supabase.storage
-					.from(BUCKET_NAME)
+					.from(PUBLIC_BUCKET_NAME)
 					.remove([previousObjectPath]);
 
 				if (deleteError) {

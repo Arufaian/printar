@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { page } from '$app/state';
+	import { toast } from 'svelte-sonner';
 	import { zod4Client } from 'sveltekit-superforms/adapters';
 	import { type Infer, type SuperValidated, superForm } from 'sveltekit-superforms';
 	import { productSchema } from '$lib/validation/product/product.schema';
@@ -6,6 +8,8 @@
 	import OptionGroupsSection from './option-groups-section.svelte';
 	import ProductFormSidebar from './product-form-sidebar.svelte';
 	import VariantsSection from './variants-section.svelte';
+
+	const BUCKET_NAME = 'ikumer';
 
 	type ProductFormData = Infer<typeof productSchema>;
 
@@ -58,9 +62,40 @@
 		];
 	};
 
-	const removeVariant = (index: number) => {
-		if (($formData.variants ?? []).length === 1) return;
-		$formData.variants = ($formData.variants ?? []).filter((_, idx) => idx !== index);
+	const getBucketObjectPathFromPublicUrl = (publicUrl?: string) => {
+		if (!publicUrl) return null;
+
+		try {
+			const parsedUrl = new URL(publicUrl);
+			const prefix = `/storage/v1/object/public/${BUCKET_NAME}/`;
+			if (!parsedUrl.pathname.startsWith(prefix)) return null;
+
+			return decodeURIComponent(parsedUrl.pathname.slice(prefix.length));
+		} catch {
+			return null;
+		}
+	};
+
+	const removeVariant = async (index: number) => {
+		const currentVariants = $formData.variants ?? [];
+		if (currentVariants.length === 1) return;
+
+		const variantToRemove = currentVariants[index];
+		const objectPath = getBucketObjectPathFromPublicUrl(variantToRemove?.img_url);
+
+		if (objectPath && page.data.supabase) {
+			try {
+				const { error } = await page.data.supabase.storage.from(BUCKET_NAME).remove([objectPath]);
+
+				if (error) {
+					toast.warning('Variant dihapus, tetapi gambar lama gagal dihapus dari storage.');
+				}
+			} catch {
+				toast.warning('Variant dihapus, tetapi terjadi kendala saat menghapus gambar lama.');
+			}
+		}
+
+		$formData.variants = currentVariants.filter((_, idx) => idx !== index);
 	};
 
 	const addOptionGroup = () => {

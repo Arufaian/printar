@@ -12,7 +12,7 @@
 		form: ProductSuperForm;
 		variants: ProductVariant[];
 		onAddVariant: () => void;
-		onRemoveVariant: (index: number) => void;
+		onRemoveVariant: (index: number) => void | Promise<void>;
 	} = $props();
 
 	const updateVariant = (index: number, nextVariant: ProductVariant) => {
