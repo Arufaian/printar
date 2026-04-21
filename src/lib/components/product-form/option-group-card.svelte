@@ -66,10 +66,10 @@
 			<Form.FieldErrors />
 		</Form.Field>
 		<div class="space-y-4">
-			{#each group.options as _option, optionIndex (_option)}
+			{#each group.options as option, optionIndex (optionIndex)}
 				<OptionItemRow
 					{form}
-					option={group.options[optionIndex]}
+					{option}
 					onOptionChange={(nextOption) => updateOption(optionIndex, nextOption)}
 					{groupIndex}
 					{optionIndex}

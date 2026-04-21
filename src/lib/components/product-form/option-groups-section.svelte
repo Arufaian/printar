@@ -35,10 +35,10 @@
 	</div>
 
 	<div class="mt-5 space-y-4">
-		{#each optionGroups as _group, groupIndex (_group)}
+		{#each optionGroups as group, groupIndex (groupIndex)}
 			<OptionGroupCard
 				{form}
-				group={optionGroups[groupIndex]}
+				{group}
 				onGroupChange={(nextGroup) => updateGroup(groupIndex, nextGroup)}
 				{groupIndex}
 				canRemoveGroup={optionGroups.length > 1}

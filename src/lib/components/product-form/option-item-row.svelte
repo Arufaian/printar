@@ -39,7 +39,7 @@
 	};
 </script>
 
-<div class="grid gap-3 rounded-md border p-3 md:grid-cols-12">
+<div class=" relative grid gap-3 rounded-md border p-3 md:grid-cols-12">
 	<Form.Field
 		{form}
 		name={`optionGroups[${groupIndex}].options[${optionIndex}].name`}
@@ -61,7 +61,7 @@
 	<Form.Field
 		{form}
 		name={`optionGroups[${groupIndex}].options[${optionIndex}].additionalPrice`}
-		class="md:col-span-4"
+		class=" md:col-span-4"
 	>
 		<Form.Control>
 			{#snippet children({ props })}
@@ -77,9 +77,10 @@
 		</Form.Control>
 		<Form.FieldErrors />
 	</Form.Field>
-	<div class="flex items-end md:col-span-1">
-		<Button type="button" class="w-full" variant="outline" disabled={!canRemove} onclick={onRemove}>
-			<X />
+
+	<div class="absolute top-0 right-0">
+		<Button type="button" variant="outline" disabled={!canRemove} onclick={onRemove}>
+			<X class="width-2" />
 		</Button>
 	</div>
 </div>

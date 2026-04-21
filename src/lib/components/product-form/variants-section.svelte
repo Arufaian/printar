@@ -33,10 +33,10 @@
 	</div>
 
 	<div class="mt-5 space-y-4">
-		{#each variants as _variant, index (_variant)}
+		{#each variants as variant, index (index)}
 			<VariantItemCard
 				{form}
-				variant={variants[index]}
+				{variant}
 				onVariantChange={(nextVariant) => updateVariant(index, nextVariant)}
 				{index}
 				canRemove={variants.length > 1}
