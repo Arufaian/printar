@@ -18,6 +18,11 @@
 		onAddOption: (groupIndex: number) => void;
 		onRemoveOption: (groupIndex: number, optionIndex: number) => void;
 	} = $props();
+
+	const updateGroup = (groupIndex: number, nextGroup: ProductOptionGroup) => {
+		// Hindari bind ke indexed property agar tidak kena warning non-reactive binding.
+		optionGroups = optionGroups.map((group, index) => (index === groupIndex ? nextGroup : group));
+	};
 </script>
 
 <section class="rounded-lg border bg-card p-4 sm:p-6">
@@ -33,7 +38,8 @@
 		{#each optionGroups as _group, groupIndex (_group)}
 			<OptionGroupCard
 				{form}
-				bind:group={optionGroups[groupIndex]}
+				group={optionGroups[groupIndex]}
+				onGroupChange={(nextGroup) => updateGroup(groupIndex, nextGroup)}
 				{groupIndex}
 				canRemoveGroup={optionGroups.length > 1}
 				onRemoveGroup={() => onRemoveOptionGroup(groupIndex)}

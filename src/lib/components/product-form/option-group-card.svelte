@@ -7,10 +7,11 @@
 
 	let {
 		form,
-		group = $bindable(),
+		group,
 		groupIndex,
 		canRemoveGroup,
 		onRemoveGroup,
+		onGroupChange,
 		onAddOption,
 		onRemoveOption
 	}: {
@@ -19,9 +20,27 @@
 		groupIndex: number;
 		canRemoveGroup: boolean;
 		onRemoveGroup: () => void;
+		onGroupChange: (nextGroup: ProductOptionGroup) => void;
 		onAddOption: (groupIndex: number) => void;
 		onRemoveOption: (groupIndex: number, optionIndex: number) => void;
 	} = $props();
+
+	const updateGroup = (patch: Partial<ProductOptionGroup>) => {
+		const nextGroup = { ...group, ...patch };
+		onGroupChange(nextGroup);
+	};
+
+	const updateOption = (optionIndex: number, nextOption: ProductOptionGroup['options'][number]) => {
+		const nextOptions = group.options.map((option, index) =>
+			index === optionIndex ? nextOption : option
+		);
+		updateGroup({ options: nextOptions });
+	};
+
+	const handleGroupNameInput = (event: Event) => {
+		const target = event.currentTarget as HTMLInputElement;
+		updateGroup({ name: target.value });
+	};
 </script>
 
 <div class="rounded-md border p-4">
@@ -36,7 +55,12 @@
 			<Form.Control>
 				{#snippet children({ props })}
 					<Form.Label>Nama Group</Form.Label>
-					<Input {...props} bind:value={group.name} placeholder="Bungkus Kado" />
+					<Input
+						{...props}
+						value={group.name}
+						oninput={handleGroupNameInput}
+						placeholder="Bungkus Kado"
+					/>
 				{/snippet}
 			</Form.Control>
 			<Form.FieldErrors />
@@ -45,7 +69,8 @@
 			{#each group.options as _option, optionIndex (_option)}
 				<OptionItemRow
 					{form}
-					bind:option={group.options[optionIndex]}
+					option={group.options[optionIndex]}
+					onOptionChange={(nextOption) => updateOption(optionIndex, nextOption)}
 					{groupIndex}
 					{optionIndex}
 					canRemove={group.options.length > 1}

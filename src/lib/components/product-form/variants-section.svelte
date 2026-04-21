@@ -14,6 +14,13 @@
 		onAddVariant: () => void;
 		onRemoveVariant: (index: number) => void;
 	} = $props();
+
+	const updateVariant = (index: number, nextVariant: ProductVariant) => {
+		// Reassign array item immutably so Svelte tracks the change reliably.
+		variants = variants.map((variant, variantIndex) =>
+			variantIndex === index ? nextVariant : variant
+		);
+	};
 </script>
 
 <section class="rounded-lg border bg-card p-4 sm:p-6">
@@ -29,7 +36,8 @@
 		{#each variants as _variant, index (_variant)}
 			<VariantItemCard
 				{form}
-				bind:variant={variants[index]}
+				variant={variants[index]}
+				onVariantChange={(nextVariant) => updateVariant(index, nextVariant)}
 				{index}
 				canRemove={variants.length > 1}
 				onRemove={() => onRemoveVariant(index)}

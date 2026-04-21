@@ -7,10 +7,11 @@
 
 	let {
 		form,
-		option = $bindable(),
+		option,
 		groupIndex,
 		optionIndex,
 		canRemove,
+		onOptionChange,
 		onRemove
 	}: {
 		form: any;
@@ -18,8 +19,24 @@
 		groupIndex: number;
 		optionIndex: number;
 		canRemove: boolean;
+		onOptionChange: (nextOption: ProductOption) => void;
 		onRemove: () => void;
 	} = $props();
+
+	const updateOption = (patch: Partial<ProductOption>) => {
+		onOptionChange({ ...option, ...patch });
+	};
+
+	const handleOptionNameInput = (event: Event) => {
+		const target = event.currentTarget as HTMLInputElement;
+		updateOption({ name: target.value });
+	};
+
+	const handleAdditionalPriceInput = (event: Event) => {
+		const target = event.currentTarget as HTMLInputElement;
+		const parsedValue = Number.parseInt(target.value, 10);
+		updateOption({ additionalPrice: Number.isNaN(parsedValue) ? 0 : parsedValue });
+	};
 </script>
 
 <div class="grid gap-3 rounded-md border p-3 md:grid-cols-12">
@@ -31,7 +48,12 @@
 		<Form.Control>
 			{#snippet children({ props })}
 				<Form.Label>Nama Opsi</Form.Label>
-				<Input {...props} bind:value={option.name} placeholder="Pakai Box Premium" />
+				<Input
+					{...props}
+					value={option.name}
+					oninput={handleOptionNameInput}
+					placeholder="Pakai Box Premium"
+				/>
 			{/snippet}
 		</Form.Control>
 		<Form.FieldErrors />
@@ -44,7 +66,13 @@
 		<Form.Control>
 			{#snippet children({ props })}
 				<Form.Label>Additional Price</Form.Label>
-				<Input {...props} type="number" min={0} bind:value={option.additionalPrice} />
+				<Input
+					{...props}
+					type="number"
+					min={0}
+					value={option.additionalPrice}
+					oninput={handleAdditionalPriceInput}
+				/>
 			{/snippet}
 		</Form.Control>
 		<Form.FieldErrors />
