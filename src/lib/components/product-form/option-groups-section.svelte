@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
-	import type { ProductOptionGroup } from './types';
+	import type { ProductOptionGroup, ProductSuperForm } from '$lib/types/product-form';
 	import OptionGroupCard from './option-group-card.svelte';
 
 	let {
@@ -11,7 +11,7 @@
 		onAddOption,
 		onRemoveOption
 	}: {
-		form: any;
+		form: ProductSuperForm;
 		optionGroups: ProductOptionGroup[];
 		onAddOptionGroup: () => void;
 		onRemoveOptionGroup: (groupIndex: number) => void;

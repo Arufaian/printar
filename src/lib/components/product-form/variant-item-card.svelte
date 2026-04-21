@@ -7,7 +7,7 @@
 	import * as Empty from '$lib/components/ui/empty/index.js';
 	import * as Form from '$lib/components/ui/form/index.js';
 	import { Input } from '$lib/components/ui/input';
-	import type { ProductVariant } from './types';
+	import type { ProductSuperForm, ProductVariant } from '$lib/types/product-form';
 
 	const BUCKET_NAME = 'ikumer';
 	const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024;
@@ -20,7 +20,7 @@
 		onVariantChange,
 		onRemove
 	}: {
-		form: any;
+		form: ProductSuperForm;
 		variant: ProductVariant;
 		index: number;
 		canRemove: boolean;

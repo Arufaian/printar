@@ -2,7 +2,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import * as Form from '$lib/components/ui/form/index.js';
 	import { Input } from '$lib/components/ui/input';
-	import type { ProductOptionGroup } from './types';
+	import type { ProductOptionGroup, ProductSuperForm } from '$lib/types/product-form';
 	import OptionItemRow from './option-item-row.svelte';
 
 	let {
@@ -15,7 +15,7 @@
 		onAddOption,
 		onRemoveOption
 	}: {
-		form: any;
+		form: ProductSuperForm;
 		group: ProductOptionGroup;
 		groupIndex: number;
 		canRemoveGroup: boolean;

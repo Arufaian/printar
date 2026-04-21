@@ -3,14 +3,15 @@
 	import { Input } from '$lib/components/ui/input';
 	import * as Select from '$lib/components/ui/select/index.js';
 	import { Textarea } from '$lib/components/ui/textarea';
+	import type { ProductFormStore, ProductSuperForm } from '$lib/types/product-form';
 
 	let {
 		form,
 		formData,
 		categoryOptions
 	}: {
-		form: any;
-		formData: any;
+		form: ProductSuperForm;
+		formData: ProductFormStore;
 		categoryOptions: Array<{ id: string; name: string }>;
 	} = $props();
 

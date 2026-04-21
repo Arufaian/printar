@@ -3,7 +3,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import * as Form from '$lib/components/ui/form/index.js';
 	import { Input } from '$lib/components/ui/input';
-	import type { ProductOption } from './types';
+	import type { ProductOption, ProductSuperForm } from '$lib/types/product-form';
 
 	let {
 		form,
@@ -14,7 +14,7 @@
 		onOptionChange,
 		onRemove
 	}: {
-		form: any;
+		form: ProductSuperForm;
 		option: ProductOption;
 		groupIndex: number;
 		optionIndex: number;
