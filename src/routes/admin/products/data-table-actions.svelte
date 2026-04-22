@@ -1,7 +1,7 @@
 <script lang="ts">
-	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
+	import { Trash2, PencilLine, EllipsisIcon } from '@lucide/svelte';
 
 	let {
 		id,
@@ -28,12 +28,16 @@
 			</Button>
 		{/snippet}
 	</DropdownMenu.Trigger>
-	<DropdownMenu.Content class="mr-4">
+	<DropdownMenu.Content class="mr-4 w-24">
 		<DropdownMenu.Group>
 			<DropdownMenu.Label>Aksi</DropdownMenu.Label>
-			<DropdownMenu.Item onclick={handleEdit}>Edit produk</DropdownMenu.Item>
+			<DropdownMenu.Item onclick={handleEdit}>
+				<PencilLine />
+				Edit
+			</DropdownMenu.Item>
 			<DropdownMenu.Item variant="destructive" onclick={handleDelete}>
-				Hapus produk
+				<Trash2 />
+				Hapus
 			</DropdownMenu.Item>
 		</DropdownMenu.Group>
 	</DropdownMenu.Content>
