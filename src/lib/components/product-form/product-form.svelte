@@ -26,6 +26,7 @@
 
 	const form = superForm(getInitialForm(), {
 		validators: zod4Client(productSchema),
+		dataType: 'json',
 		multipleSubmits: 'prevent',
 		resetForm: false
 	});

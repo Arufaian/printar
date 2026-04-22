@@ -1,7 +1,8 @@
 import { superValidate } from 'sveltekit-superforms';
-import type { PageServerLoad } from './$types';
+import type { PageServerLoad, Actions } from './$types';
 import { productSchema } from '$lib/validation/product/product.schema';
 import { zod4 } from 'sveltekit-superforms/adapters';
+import { fail } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { categories } from '$lib/server/db/schema';
 
@@ -24,3 +25,27 @@ export const load: PageServerLoad = async () => {
 		categoryOptions
 	};
 };
+
+export const actions = {
+	default: async (event) => {
+		const form = await superValidate(event, zod4(productSchema));
+
+		if (!form.valid) {
+			return fail(400, { form });
+		}
+
+		console.log('form data:');
+		console.log(form.data);
+
+		console.log('form variants:');
+		console.log(form.data.variants);
+
+		console.log('form options:');
+		console.log(form.data.optionGroups);
+
+		console.log('form error:');
+		console.error(form.errors);
+
+		return { form };
+	}
+} satisfies Actions;
