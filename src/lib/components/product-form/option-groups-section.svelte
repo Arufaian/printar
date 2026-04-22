@@ -35,13 +35,19 @@
 	</div>
 
 	<div class="mt-5 space-y-4">
+		{#if optionGroups.length === 0}
+			<p class="text-sm text-muted-foreground">
+				Belum ada grup opsi tambahan. Klik <strong>Tambah Grup</strong> untuk menambahkan.
+			</p>
+		{/if}
+
 		{#each optionGroups as group, groupIndex (groupIndex)}
 			<OptionGroupCard
 				{form}
 				{group}
 				onGroupChange={(nextGroup) => updateGroup(groupIndex, nextGroup)}
 				{groupIndex}
-				canRemoveGroup={optionGroups.length > 1}
+				canRemoveGroup={true}
 				onRemoveGroup={() => onRemoveOptionGroup(groupIndex)}
 				{onAddOption}
 				{onRemoveOption}

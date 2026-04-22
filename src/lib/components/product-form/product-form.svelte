@@ -131,7 +131,6 @@
 	};
 
 	const removeOptionGroup = (groupIndex: number) => {
-		if (($formData.optionGroups ?? []).length === 1) return;
 		$formData.optionGroups = ($formData.optionGroups ?? []).filter((_, idx) => idx !== groupIndex);
 	};
 
