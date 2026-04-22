@@ -33,7 +33,7 @@
 	</div>
 
 	<div class="mt-5 space-y-4">
-		{#each variants as variant, index (index)}
+		{#each variants as variant, index (`${variant.img_url ?? 'no-image'}-${index}`)}
 			<VariantItemCard
 				{form}
 				{variant}

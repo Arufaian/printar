@@ -34,6 +34,12 @@
 	let localPreviewUrl = $state('');
 	let isUploading = $state(false);
 
+	const clearLocalPreview = () => {
+		if (!localPreviewUrl) return;
+		URL.revokeObjectURL(localPreviewUrl);
+		localPreviewUrl = '';
+	};
+
 	const openFilePicker = () => {
 		imageFileInput?.click();
 	};
@@ -86,10 +92,7 @@
 		const previousImageUrl = variant.img_url;
 		selectedFileName = file?.name ?? '';
 
-		if (localPreviewUrl) {
-			URL.revokeObjectURL(localPreviewUrl);
-			localPreviewUrl = '';
-		}
+		clearLocalPreview();
 
 		if (!file) return;
 
@@ -157,10 +160,20 @@
 		}
 	};
 
-	onDestroy(() => {
-		if (localPreviewUrl) {
-			URL.revokeObjectURL(localPreviewUrl);
+	$effect(() => {
+		if (!variant.img_url && localPreviewUrl) {
+			clearLocalPreview();
+			selectedFileName = '';
+			return;
 		}
+
+		if (variant.img_url && localPreviewUrl && localPreviewUrl !== variant.img_url) {
+			clearLocalPreview();
+		}
+	});
+
+	onDestroy(() => {
+		clearLocalPreview();
 	});
 </script>
 
