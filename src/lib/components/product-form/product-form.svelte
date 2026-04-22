@@ -28,7 +28,14 @@
 		validators: zod4Client(productSchema),
 		dataType: 'json',
 		multipleSubmits: 'prevent',
-		resetForm: false
+		resetForm: false,
+		onSubmit: ({ cancel }) => {
+			if (($formData.variants ?? []).length > 0) return;
+
+			addVariant();
+			toast.warning('Variant perlu ditambahkan');
+			cancel();
+		}
 	});
 
 	const { form: formData, enhance, submitting } = form;
