@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { products, variants, categories } from '$lib/server/db/schema';
-import { eq, isNull } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { count, min, sum } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 

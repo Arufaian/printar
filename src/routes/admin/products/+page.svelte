@@ -26,10 +26,12 @@
 </script>
 
 <section>
-	<DataTable
-		data={getTableData()}
-		{columns}
-		filterColumnId="name"
-		filterPlaceholder="Filter products..."
-	/>
+	<div class="w-full min-w-0">
+		<DataTable
+			data={getTableData()}
+			{columns}
+			filterColumnId="name"
+			filterPlaceholder="Filter products..."
+		/>
+	</div>
 </section>

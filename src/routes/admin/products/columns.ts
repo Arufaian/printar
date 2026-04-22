@@ -44,6 +44,11 @@ export const createColumns = ({ onEdit, onDelete }: CreateColumnsOptions): Colum
 	},
 	{
 		accessorKey: 'id',
+		// NOTE: ID is intentionally kept left-aligned for easier scanning.
+		meta: {
+			headClass: 'text-left',
+			cellClass: 'text-left'
+		},
 		header: 'ID'
 	},
 	{
@@ -75,7 +80,8 @@ export const createColumns = ({ onEdit, onDelete }: CreateColumnsOptions): Colum
 		header: ({ column }) =>
 			renderComponent(DataTableSorting, {
 				onclick: column.getToggleSortingHandler(),
-				label: 'Price'
+				label: 'Price',
+				class: 'w-full flex justify-center'
 			}),
 		cell: ({ row }) => {
 			const price = row.original.lowestPrice;

@@ -32,6 +32,11 @@
 		pageSize?: number;
 	};
 
+	type ColumnAlignMeta = {
+		headClass?: string;
+		cellClass?: string;
+	};
+
 	let {
 		data,
 		columns,
@@ -123,9 +128,17 @@
 	});
 
 	const getFilterColumn = () => table.getColumn(filterColumnId);
+
+	// NOTE: Default alignment is centered for all columns unless overridden via column meta.
+	const getColumnAlignMeta = (columnDef: ColumnDef<TData, TValue>) =>
+		(columnDef.meta as ColumnAlignMeta | undefined) ?? {};
+	const getHeadAlignClass = (columnDef: ColumnDef<TData, TValue>) =>
+		getColumnAlignMeta(columnDef).headClass ?? 'text-center';
+	const getCellAlignClass = (columnDef: ColumnDef<TData, TValue>) =>
+		getColumnAlignMeta(columnDef).cellClass ?? 'text-center';
 </script>
 
-<div>
+<div class="w-full overflow-hidden">
 	<div class="flex items-center py-4">
 		{#if filterColumnId}
 			<Input
@@ -164,7 +177,10 @@
 				{#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
 					<Table.Row>
 						{#each headerGroup.headers as header (header.id)}
-							<Table.Head colspan={header.colSpan}>
+							<Table.Head
+								colspan={header.colSpan}
+								class={getHeadAlignClass(header.column.columnDef)}
+							>
 								{#if !header.isPlaceholder}
 									<FlexRender
 										content={header.column.columnDef.header}
@@ -180,7 +196,7 @@
 				{#each table.getRowModel().rows as row (row.id)}
 					<Table.Row data-state={row.getIsSelected() && 'selected'}>
 						{#each row.getVisibleCells() as cell (cell.id)}
-							<Table.Cell>
+							<Table.Cell class={getCellAlignClass(cell.column.columnDef)}>
 								<FlexRender content={cell.column.columnDef.cell} context={cell.getContext()} />
 							</Table.Cell>
 						{/each}
