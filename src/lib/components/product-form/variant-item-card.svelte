@@ -179,8 +179,8 @@
 
 <div class="rounded-md border p-4">
 	<div class="mb-4 flex items-center justify-between gap-3">
-		<h3 class="text-sm font-medium">Variant #{index + 1}</h3>
-		<Button type="button" variant="ghost" disabled={!canRemove} onclick={onRemove}>Remove</Button>
+		<h3 class="text-sm font-medium">{variant.name ? variant.name : 'variant name'}</h3>
+		<Button type="button" variant="ghost" disabled={!canRemove} onclick={onRemove}>Hapus</Button>
 	</div>
 	<div class="grid gap-4 md:grid-cols-2">
 		<div class="col-span-2">
@@ -206,13 +206,13 @@
 						<Empty.Media variant="icon">
 							<Image />
 						</Empty.Media>
-						<Empty.Title>Image empty</Empty.Title>
+						<Empty.Title>Belum ada gambar</Empty.Title>
 					{/if}
 					<Empty.Description>
 						{#if isUploading}
-							Uploading image...
+							Mengunggah gambar...
 						{:else}
-							{selectedFileName || 'Upload variant image.'}
+							{selectedFileName || 'Upload gambar varian.'}
 						{/if}
 					</Empty.Description>
 				</Empty.Header>
@@ -224,7 +224,7 @@
 						onclick={openFilePicker}
 						disabled={isUploading}
 					>
-						{isUploading ? 'Uploading...' : 'Select file'}
+						{isUploading ? 'Mengunggah...' : 'Pilih File'}
 					</Button>
 				</Empty.Content>
 			</Empty.Root>
@@ -233,12 +233,12 @@
 		<Form.Field {form} name={`variants[${index}].name`} class="md:col-span-2">
 			<Form.Control>
 				{#snippet children({ props })}
-					<Form.Label>Nama Variant</Form.Label>
+					<Form.Label>Nama Varian</Form.Label>
 					<Input
 						{...props}
 						value={variant.name}
 						oninput={handleVariantNameInput}
-						placeholder="Merah - M"
+						placeholder="Hitam"
 					/>
 				{/snippet}
 			</Form.Control>

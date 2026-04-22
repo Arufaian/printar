@@ -65,7 +65,7 @@
 	>
 		<Form.Control>
 			{#snippet children({ props })}
-				<Form.Label>Additional Price</Form.Label>
+				<Form.Label>Biaya Tambahan</Form.Label>
 				<Input
 					{...props}
 					type="number"

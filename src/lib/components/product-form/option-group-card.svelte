@@ -45,16 +45,16 @@
 
 <div class="rounded-md border p-4">
 	<div class="mb-4 flex items-center justify-between gap-3">
-		<h3 class="text-sm font-medium">Group #{groupIndex + 1}</h3>
+		<h3 class="text-sm font-medium">{group.name ? group.name : 'Nama Group'}</h3>
 		<Button type="button" variant="ghost" disabled={!canRemoveGroup} onclick={onRemoveGroup}>
-			Remove Group
+			Hapus Grup
 		</Button>
 	</div>
 	<div class="space-y-4">
 		<Form.Field {form} name={`optionGroups[${groupIndex}].name`}>
 			<Form.Control>
 				{#snippet children({ props })}
-					<Form.Label>Nama Group</Form.Label>
+					<Form.Label>Nama Grup</Form.Label>
 					<Input
 						{...props}
 						value={group.name}
@@ -78,7 +78,7 @@
 				/>
 			{/each}
 			<Button type="button" variant="outline" onclick={() => onAddOption(groupIndex)}
-				>Add Option</Button
+				>Tambah Opsi</Button
 			>
 		</div>
 	</div>

@@ -31,13 +31,13 @@ export const createColumns = ({ onEdit, onDelete }: CreateColumnsOptions): Colum
 				indeterminate: table.getIsSomePageRowsSelected() && !table.getIsAllPageRowsSelected(),
 				onCheckedChange: (value: boolean | 'indeterminate') =>
 					table.toggleAllPageRowsSelected(!!value),
-				'aria-label': 'Select all'
+				'aria-label': 'Pilih semua'
 			}),
 		cell: ({ row }) =>
 			renderComponent(DataTableCheckbox, {
 				checked: row.getIsSelected(),
 				onCheckedChange: (value: boolean | 'indeterminate') => row.toggleSelected(!!value),
-				'aria-label': 'Select row'
+				'aria-label': 'Pilih baris'
 			}),
 		enableSorting: false,
 		enableHiding: false
@@ -56,7 +56,7 @@ export const createColumns = ({ onEdit, onDelete }: CreateColumnsOptions): Colum
 		header: ({ column }) =>
 			renderComponent(DataTableSorting, {
 				onclick: column.getToggleSortingHandler(),
-				label: 'Name'
+				label: 'Nama'
 			})
 	},
 	{
@@ -64,7 +64,7 @@ export const createColumns = ({ onEdit, onDelete }: CreateColumnsOptions): Colum
 		header: ({ column }) =>
 			renderComponent(DataTableSorting, {
 				onclick: column.getToggleSortingHandler(),
-				label: 'Category'
+				label: 'Kategori'
 			})
 	},
 	{
@@ -72,7 +72,7 @@ export const createColumns = ({ onEdit, onDelete }: CreateColumnsOptions): Colum
 		header: ({ column }) =>
 			renderComponent(DataTableSorting, {
 				onclick: column.getToggleSortingHandler(),
-				label: 'Variants'
+				label: 'Varian'
 			})
 	},
 	{
@@ -80,7 +80,7 @@ export const createColumns = ({ onEdit, onDelete }: CreateColumnsOptions): Colum
 		header: ({ column }) =>
 			renderComponent(DataTableSorting, {
 				onclick: column.getToggleSortingHandler(),
-				label: 'Price',
+				label: 'Harga',
 				class: 'w-full flex justify-center'
 			}),
 		cell: ({ row }) => {
@@ -97,7 +97,7 @@ export const createColumns = ({ onEdit, onDelete }: CreateColumnsOptions): Colum
 		header: ({ column }) =>
 			renderComponent(DataTableSorting, {
 				onclick: column.getToggleSortingHandler(),
-				label: 'Stock'
+				label: 'Stok'
 			})
 	},
 	{
@@ -105,7 +105,7 @@ export const createColumns = ({ onEdit, onDelete }: CreateColumnsOptions): Colum
 		header: 'Status',
 		cell: ({ row }) => {
 			const isActive = row.original.deletedAt === null;
-			return isActive ? 'Active' : 'Archived';
+			return isActive ? 'Aktif' : 'Diarsipkan';
 		}
 	},
 	{
@@ -113,7 +113,7 @@ export const createColumns = ({ onEdit, onDelete }: CreateColumnsOptions): Colum
 		header: ({ column }) =>
 			renderComponent(DataTableSorting, {
 				onclick: column.getToggleSortingHandler(),
-				label: 'Created At'
+				label: 'Dibuat Pada'
 			}),
 		cell: ({ row }) => {
 			const date = row.original.createdAt;
@@ -125,7 +125,7 @@ export const createColumns = ({ onEdit, onDelete }: CreateColumnsOptions): Colum
 	},
 	{
 		id: 'actions',
-		header: 'Actions',
+		header: 'Aksi',
 		enableHiding: false,
 		cell: ({ row }) =>
 			renderComponent(DataTableActions, {

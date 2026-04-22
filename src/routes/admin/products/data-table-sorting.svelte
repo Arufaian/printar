@@ -4,7 +4,7 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 
 	let {
-		label = 'Sort',
+		label = 'Urutkan',
 		variant = 'ghost',
 		...restProps
 	}: { label?: string } & ComponentProps<typeof Button> = $props();

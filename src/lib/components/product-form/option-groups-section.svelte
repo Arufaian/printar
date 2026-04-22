@@ -28,10 +28,10 @@
 <section class="rounded-lg border bg-card p-4 sm:p-6">
 	<div class="flex items-center justify-between gap-3">
 		<div>
-			<h2 class="text-lg font-semibold">Option Groups</h2>
+			<h2 class="text-lg font-semibold">Opsi Tambahan</h2>
 			<p class="mt-1 text-sm text-muted-foreground">Pilihan tambahan per grup (opsional).</p>
 		</div>
-		<Button type="button" variant="outline" onclick={onAddOptionGroup}>Add Group</Button>
+		<Button type="button" variant="outline" onclick={onAddOptionGroup}>Tambah Grup</Button>
 	</div>
 
 	<div class="mt-5 space-y-4">

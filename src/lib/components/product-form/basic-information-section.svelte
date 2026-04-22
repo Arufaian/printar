@@ -31,7 +31,7 @@
 			<Form.Control>
 				{#snippet children({ props })}
 					<Form.Label>Nama Produk</Form.Label>
-					<Input {...props} bind:value={$formData.name} placeholder="Kemeja Flanel Kotak" />
+					<Input {...props} bind:value={$formData.name} placeholder="Mug custom" />
 				{/snippet}
 			</Form.Control>
 			<Form.FieldErrors />
@@ -63,7 +63,7 @@
 						class="h-48"
 						rows={7}
 						bind:value={$formData.description}
-						placeholder="Kemeja flanel bahan premium, nyaman dipakai seharian."
+						placeholder="Mug custom berkualitas premium"
 					/>
 				{/snippet}
 			</Form.Control>

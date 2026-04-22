@@ -23,17 +23,17 @@
 	<DropdownMenu.Trigger>
 		{#snippet child({ props })}
 			<Button {...props} variant="ghost" size="icon" class="relative size-8 p-0">
-				<span class="sr-only">Open menu</span>
+				<span class="sr-only">Buka menu</span>
 				<EllipsisIcon />
 			</Button>
 		{/snippet}
 	</DropdownMenu.Trigger>
-	<DropdownMenu.Content>
+	<DropdownMenu.Content class="mr-4">
 		<DropdownMenu.Group>
-			<DropdownMenu.Label>Actions</DropdownMenu.Label>
-			<DropdownMenu.Item onclick={handleEdit}>Edit product</DropdownMenu.Item>
+			<DropdownMenu.Label>Aksi</DropdownMenu.Label>
+			<DropdownMenu.Item onclick={handleEdit}>Edit produk</DropdownMenu.Item>
 			<DropdownMenu.Item variant="destructive" onclick={handleDelete}>
-				Delete product
+				Hapus produk
 			</DropdownMenu.Item>
 		</DropdownMenu.Group>
 	</DropdownMenu.Content>

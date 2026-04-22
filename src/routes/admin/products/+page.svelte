@@ -2,6 +2,8 @@
 	import { DataTable } from '$lib/components/ui/data-table/index.js';
 	import { createColumns, type Product } from './columns.js';
 	import type { PageData } from './$types';
+	import Button from '$lib/components/ui/button/button.svelte';
+	import { resolve } from '$app/paths';
 
 	let { data }: { data: PageData } = $props();
 
@@ -27,11 +29,16 @@
 
 <section>
 	<div class="w-full min-w-0">
+		<div>
+			<a href={resolve('/admin/products/new')}>
+				<Button>Tambah Produk</Button>
+			</a>
+		</div>
 		<DataTable
 			data={getTableData()}
 			{columns}
 			filterColumnId="name"
-			filterPlaceholder="Filter products..."
+			filterPlaceholder="Cari produk..."
 		/>
 	</div>
 </section>

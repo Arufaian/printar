@@ -26,10 +26,10 @@
 <section class="rounded-lg border bg-card p-4 sm:p-6">
 	<div class="flex items-center justify-between gap-3">
 		<div>
-			<h2 class="text-lg font-semibold">Variants</h2>
-			<p class="mt-1 text-sm text-muted-foreground">Field img_url diisi URL hasil upload.</p>
+			<h2 class="text-lg font-semibold">Varian</h2>
+			<p class="mt-1 text-sm text-muted-foreground">Gambar varian diisi dari URL hasil upload.</p>
 		</div>
-		<Button type="button" variant="outline" onclick={onAddVariant}>Add Variant</Button>
+		<Button type="button" variant="outline" onclick={onAddVariant}>Tambah Varian</Button>
 	</div>
 
 	<div class="mt-5 space-y-4">
