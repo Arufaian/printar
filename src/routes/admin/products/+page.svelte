@@ -12,6 +12,7 @@
 	let { data }: { data: PageData } = $props();
 	let deleteDialogOpen = $state(false);
 	let selectedProduct = $state<Product | null>(null);
+	let deleteSubmitting = $state(false);
 
 	const getTableData = (): Product[] =>
 		data.response.map((item) => ({
@@ -46,12 +47,15 @@
 			action={selectedProduct ? `/admin/products/${selectedProduct.id}/delete` : ''}
 			class="hidden"
 			use:kitEnhance={() => {
+				deleteSubmitting = true;
+
 				return async ({ result, update }) => {
 					if (result.type === 'success') {
 						const message =
 							typeof result.data?.text === 'string' ? result.data.text : 'Produk berhasil dihapus.';
 
 						toast.success(message);
+						deleteSubmitting = false;
 						deleteDialogOpen = false;
 						selectedProduct = null;
 						await update();
@@ -66,10 +70,12 @@
 								: 'Gagal menghapus produk. Silakan coba lagi.';
 
 						toast.error(message);
+						deleteSubmitting = false;
 						return;
 					}
 
 					toast.error('Terjadi gangguan saat menghapus produk. Silakan coba lagi.');
+					deleteSubmitting = false;
 				};
 			}}
 		>
@@ -92,8 +98,13 @@
 					</AlertDialog.Description>
 				</AlertDialog.Header>
 				<AlertDialog.Footer>
-					<AlertDialog.Cancel>Batal</AlertDialog.Cancel>
-					<AlertDialog.Action type="submit" form="delete-product-form" variant="destructive">
+					<AlertDialog.Cancel disabled={deleteSubmitting}>Batal</AlertDialog.Cancel>
+					<AlertDialog.Action
+						type="submit"
+						form="delete-product-form"
+						variant="destructive"
+						disabled={deleteSubmitting}
+					>
 						Hapus produk
 					</AlertDialog.Action>
 				</AlertDialog.Footer>
