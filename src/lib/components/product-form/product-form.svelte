@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { toast } from 'svelte-sonner';
 	import { zod4Client } from 'sveltekit-superforms/adapters';
 	import { type Infer, type SuperValidated, superForm } from 'sveltekit-superforms';
@@ -35,6 +37,21 @@
 			addVariant();
 			toast.warning('Variant perlu ditambahkan');
 			cancel();
+		},
+		onUpdated: ({ form: updatedForm }) => {
+			if (!updatedForm.message) return;
+
+			if (updatedForm.message.type === 'success') {
+				toast.success(updatedForm.message.text);
+				setTimeout(() => {
+					goto(resolve('/admin/products'));
+				}, 3000);
+				return;
+			}
+
+			if (updatedForm.message.type === 'error') {
+				toast.error(updatedForm.message.text);
+			}
 		}
 	});
 

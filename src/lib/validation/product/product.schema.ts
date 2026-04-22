@@ -1,29 +1,32 @@
 import { z } from 'zod';
 
+// NOTE: Avoid `.trim()` transform in client-side validators so spaces remain typable while editing.
+const hasVisibleText = (value: string) => value.trim().length > 0;
+
 const productNameSchema = z
 	.string()
-	.trim()
 	.min(1, 'Product name is required')
+	.refine(hasVisibleText, 'Product name is required')
 	.max(120, 'Product name must be at most 120 characters');
 
 const categoryIdSchema = z.uuid('Invalid Category ID format');
 
 const variantNameSchema = z
 	.string()
-	.trim()
 	.min(1, 'Variant name is required')
+	.refine(hasVisibleText, 'Variant name is required')
 	.max(80, 'Variant name must be at most 80 characters');
 
 const optionGroupNameSchema = z
 	.string()
-	.trim()
 	.min(1, 'Option group name is required')
+	.refine(hasVisibleText, 'Option group name is required')
 	.max(80, 'Option group name must be at most 80 characters');
 
 const optionNameSchema = z
 	.string()
-	.trim()
 	.min(1, 'Option name is required')
+	.refine(hasVisibleText, 'Option name is required')
 	.max(80, 'Option name must be at most 80 characters');
 
 const moneySchema = z.coerce

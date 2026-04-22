@@ -1,10 +1,10 @@
-import { superValidate } from 'sveltekit-superforms';
+import { message, superValidate } from 'sveltekit-superforms';
 import type { PageServerLoad, Actions } from './$types';
 import { productSchema } from '$lib/validation/product/product.schema';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import { fail } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { categories } from '$lib/server/db/schema';
+import { categories, optionGroups, options, products, variants } from '$lib/server/db/schema';
 
 export const load: PageServerLoad = async () => {
 	const form = await superValidate(zod4(productSchema));
@@ -46,6 +46,76 @@ export const actions = {
 		console.log('form error:');
 		console.error(form.errors);
 
-		return { form };
+		// NOTE: Trim textual values on save so database stays clean while client typing stays natural.
+		const { name, description, categoryId } = form.data;
+		const sanitizedName = name.trim();
+		const sanitizedDescription = description?.trim();
+
+		try {
+			await db.transaction(async (tx) => {
+				const [createdProduct] = await tx
+					.insert(products)
+					.values({
+						name: sanitizedName,
+						description: sanitizedDescription,
+						categoryId
+					})
+					.returning({ id: products.id });
+
+				if (!createdProduct?.id) {
+					throw new Error('Failed to create product.');
+				}
+
+				const productId = createdProduct.id;
+
+				await tx.insert(variants).values(
+					form.data.variants.map((variant) => ({
+						productId,
+						name: variant.name.trim(),
+						price: variant.price,
+						stock: variant.stock,
+						imgUrl: variant.img_url
+					}))
+				);
+
+				for (const group of form.data.optionGroups) {
+					const [createdGroup] = await tx
+						.insert(optionGroups)
+						.values({
+							productId,
+							name: group.name.trim()
+						})
+						.returning({ id: optionGroups.id });
+
+					if (!createdGroup?.id) {
+						throw new Error('Failed to create option group.');
+					}
+
+					await tx.insert(options).values(
+						group.options.map((option) => ({
+							optionGroupId: createdGroup.id,
+							name: option.name.trim(),
+							additionalPrice: option.additionalPrice
+						}))
+					);
+				}
+			});
+
+			return message(form, {
+				type: 'success',
+				text: 'Produk berhasil ditambahkan.'
+			});
+		} catch (error) {
+			console.error(error);
+
+			return message(
+				form,
+				{
+					type: 'error',
+					text: 'Gagal menambahkan produk. Silakan coba lagi.'
+				},
+				{ status: 500 }
+			);
+		}
 	}
 } satisfies Actions;
