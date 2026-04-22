@@ -66,7 +66,7 @@ export const productSchema = z
 								additionalPrice: moneySchema
 							})
 						)
-						.min(0, 'At least one option is required')
+						.min(1, 'At least one option is required')
 				})
 			)
 			.default([])
