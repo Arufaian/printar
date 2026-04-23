@@ -1,5 +1,5 @@
 import { error, fail } from '@sveltejs/kit';
-import { DrizzleQueryError, eq } from 'drizzle-orm';
+import { DrizzleQueryError, and, eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '$lib/server/db';
 import { categories, optionGroups, options, products, variants } from '$lib/server/db/schema';
@@ -165,18 +165,71 @@ export const actions = {
 					throw error(404, 'Produk tidak ditemukan.');
 				}
 
-				await tx.delete(variants).where(eq(variants.productId, productId));
-				await tx.delete(optionGroups).where(eq(optionGroups.productId, productId));
+				// Stage 1 migration: variants now use diff/upsert to preserve IDs and reduce FK risk.
+				const existingVariants = await tx
+					.select({
+						id: variants.id
+					})
+					.from(variants)
+					.where(eq(variants.productId, productId));
 
-				await tx.insert(variants).values(
-					form.data.variants.map((variant) => ({
-						productId,
-						name: variant.name.trim(),
-						price: variant.price,
-						stock: variant.stock,
-						imgUrl: variant.img_url
-					}))
+				const existingVariantIds = new Set(existingVariants.map((variant) => variant.id));
+				const incomingVariantIds = new Set(
+					form.data.variants
+						.map((variant) => variant.id)
+						.filter((variantId): variantId is string => Boolean(variantId))
 				);
+
+				for (const incomingVariantId of incomingVariantIds) {
+					// Security/consistency guard: reject variant IDs that do not belong to current product.
+					if (!existingVariantIds.has(incomingVariantId)) {
+						throw error(400, 'Data varian tidak valid. Silakan refresh halaman lalu coba lagi.');
+					}
+				}
+
+				const variantsToUpdate = form.data.variants.filter(
+					(variant) => typeof variant.id === 'string' && existingVariantIds.has(variant.id)
+				);
+				const variantsToCreate = form.data.variants.filter((variant) => !variant.id);
+				const variantsToDelete = existingVariants
+					.map((variant) => variant.id)
+					.filter((existingVariantId) => !incomingVariantIds.has(existingVariantId));
+
+				for (const variant of variantsToUpdate) {
+					const variantId = variant.id;
+					if (!variantId) continue;
+
+					await tx
+						.update(variants)
+						.set({
+							name: variant.name.trim(),
+							price: variant.price,
+							stock: variant.stock,
+							imgUrl: variant.img_url
+						})
+						.where(and(eq(variants.id, variantId), eq(variants.productId, productId)));
+				}
+
+				if (variantsToCreate.length > 0) {
+					await tx.insert(variants).values(
+						variantsToCreate.map((variant) => ({
+							productId,
+							name: variant.name.trim(),
+							price: variant.price,
+							stock: variant.stock,
+							imgUrl: variant.img_url
+						}))
+					);
+				}
+
+				if (variantsToDelete.length > 0) {
+					await tx
+						.delete(variants)
+						.where(and(eq(variants.productId, productId), inArray(variants.id, variantsToDelete)));
+				}
+
+				// TODO(stage 2): migrate optionGroups/options from full-replace to diff/upsert by id.
+				await tx.delete(optionGroups).where(eq(optionGroups.productId, productId));
 
 				for (const group of form.data.optionGroups) {
 					const [createdGroup] = await tx
@@ -221,15 +274,18 @@ export const actions = {
 				typeof caughtError === 'object' &&
 				caughtError !== null &&
 				'status' in caughtError &&
-				caughtError.status === 404
+				(caughtError.status === 404 || caughtError.status === 400)
 			) {
+				const notFound = caughtError.status === 404;
 				return message(
 					form,
 					{
 						type: 'error',
-						text: 'Produk tidak ditemukan.'
+						text: notFound
+							? 'Produk tidak ditemukan.'
+							: 'Data varian tidak valid. Silakan refresh halaman lalu coba lagi.'
 					},
-					{ status: 404 }
+					{ status: caughtError.status }
 				);
 			}
 
