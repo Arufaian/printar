@@ -39,7 +39,7 @@
 				toast.success(updatedForm.message.text);
 				setTimeout(() => {
 					goto(resolve('/admin/products'));
-				}, 3000);
+				}, 500);
 				return;
 			}
 

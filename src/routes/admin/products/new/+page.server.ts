@@ -15,8 +15,8 @@ export const load: PageServerLoad = async () => {
 			variants: [
 				{
 					name: '',
-					price: Number.NaN,
-					stock: Number.NaN,
+					price: 0,
+					stock: 0,
 					img_url: ''
 				}
 			],
