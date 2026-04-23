@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance as kitEnhance } from '$app/forms';
-	import { invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { DataTable } from '$lib/components/ui/data-table/index.js';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 	import { createColumns, type Product } from './columns.js';
@@ -34,7 +34,9 @@
 	};
 
 	const columns = createColumns({
-		onEdit: () => {},
+		onEdit: (product) => {
+			goto(resolve(`/admin/products/${product.id}/edit`));
+		},
 		onDelete
 	});
 </script>
