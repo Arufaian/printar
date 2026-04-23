@@ -76,14 +76,24 @@
 
 	const handleVariantPriceInput = (event: Event) => {
 		const target = event.currentTarget as HTMLInputElement;
+		if (target.value.trim() === '') {
+			updateVariant({ price: Number.NaN });
+			return;
+		}
+
 		const parsedValue = Number.parseInt(target.value, 10);
-		updateVariant({ price: Number.isNaN(parsedValue) ? 0 : parsedValue });
+		updateVariant({ price: Number.isNaN(parsedValue) ? Number.NaN : parsedValue });
 	};
 
 	const handleVariantStockInput = (event: Event) => {
 		const target = event.currentTarget as HTMLInputElement;
+		if (target.value.trim() === '') {
+			updateVariant({ stock: Number.NaN });
+			return;
+		}
+
 		const parsedValue = Number.parseInt(target.value, 10);
-		updateVariant({ stock: Number.isNaN(parsedValue) ? 0 : parsedValue });
+		updateVariant({ stock: Number.isNaN(parsedValue) ? Number.NaN : parsedValue });
 	};
 
 	const handleFileChange = async (event: Event) => {
@@ -252,7 +262,7 @@
 						{...props}
 						type="number"
 						min={0}
-						value={variant.price}
+						value={Number.isFinite(variant.price) ? variant.price : ''}
 						oninput={handleVariantPriceInput}
 					/>
 				{/snippet}
@@ -267,7 +277,7 @@
 						{...props}
 						type="number"
 						min={0}
-						value={variant.stock}
+						value={Number.isFinite(variant.stock) ? variant.stock : ''}
 						oninput={handleVariantStockInput}
 					/>
 				{/snippet}

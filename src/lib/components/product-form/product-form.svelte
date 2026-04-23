@@ -31,13 +31,7 @@
 		dataType: 'json',
 		multipleSubmits: 'prevent',
 		resetForm: false,
-		onSubmit: ({ cancel }) => {
-			if (($formData.variants ?? []).length > 0) return;
 
-			addVariant();
-			toast.warning('Variant perlu ditambahkan');
-			cancel();
-		},
 		onUpdated: ({ form: updatedForm }) => {
 			if (!updatedForm.message) return;
 
@@ -61,9 +55,10 @@
 	const lowestPrice = $derived(
 		($formData.variants ?? []).reduce(
 			(lowest, variant) => {
-				if (variant.price <= 0) return lowest;
-				if (lowest === null) return variant.price;
-				return Math.min(lowest, variant.price);
+				const price = Number(variant.price);
+				if (!Number.isFinite(price) || price <= 0) return lowest;
+				if (lowest === null) return price;
+				return Math.min(lowest, price);
 			},
 			null as number | null
 		)
@@ -80,8 +75,8 @@
 			...($formData.variants ?? []),
 			{
 				name: '',
-				price: 0,
-				stock: 0,
+				price: Number.NaN,
+				stock: Number.NaN,
 				img_url: ''
 			}
 		];

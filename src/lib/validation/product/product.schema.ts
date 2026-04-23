@@ -5,39 +5,55 @@ const hasVisibleText = (value: string) => value.trim().length > 0;
 
 const productNameSchema = z
 	.string()
-	.min(1, 'Product name is required')
-	.refine(hasVisibleText, 'Product name is required')
-	.max(120, 'Product name must be at most 120 characters');
+	.refine(hasVisibleText, 'Nama produk wajib diisi')
+	.max(120, 'Nama produk maksimal 120 karakter');
 
-const categoryIdSchema = z.uuid('Invalid Category ID format');
+const categoryIdSchema = z.uuid('Kategori wajib dipilih');
 
 const variantNameSchema = z
 	.string()
-	.min(1, 'Variant name is required')
-	.refine(hasVisibleText, 'Variant name is required')
-	.max(80, 'Variant name must be at most 80 characters');
+	.refine(hasVisibleText, 'Nama varian wajib diisi')
+	.max(80, 'Nama varian maksimal 80 karakter');
 
 const optionGroupNameSchema = z
 	.string()
-	.min(1, 'Option group name is required')
-	.refine(hasVisibleText, 'Option group name is required')
-	.max(80, 'Option group name must be at most 80 characters');
+	.refine(hasVisibleText, 'Nama grup opsi wajib diisi')
+	.max(80, 'Nama grup opsi maksimal 80 karakter');
 
 const optionNameSchema = z
 	.string()
-	.min(1, 'Option name is required')
-	.refine(hasVisibleText, 'Option name is required')
-	.max(80, 'Option name must be at most 80 characters');
+	.refine(hasVisibleText, 'Nama opsi wajib diisi')
+	.max(80, 'Nama opsi maksimal 80 karakter');
 
-const moneySchema = z.coerce
-	.number()
-	.int('Price must be an integer')
-	.min(0, 'Harga tidak boleh kosong');
+const parseRequiredInteger = (
+	requiredMessage: string,
+	integerMessage: string,
+	minimumValue: number,
+	minMessage: string
+) =>
+	z.preprocess(
+		(value) => {
+			if (value === '' || value === null || value === undefined) return null;
+			if (typeof value === 'number' && Number.isNaN(value)) return null;
+			if (typeof value === 'string') return Number(value);
+			return value;
+		},
+		z.number(requiredMessage).int(integerMessage).min(minimumValue, minMessage)
+	);
 
-const stockSchema = z.coerce
-	.number()
-	.int('Stock must be an integer')
-	.min(0, 'Stock must be at least 0');
+const moneySchema = parseRequiredInteger(
+	'Harga wajib diisi',
+	'Harga harus berupa bilangan bulat',
+	0,
+	'Harga tidak boleh kurang dari 0'
+);
+
+const stockSchema = parseRequiredInteger(
+	'Stok wajib diisi',
+	'Stok harus berupa bilangan bulat',
+	1,
+	'Stok minimal 1'
+);
 
 export const productSchema = z
 	.object({
@@ -52,10 +68,10 @@ export const productSchema = z
 					name: variantNameSchema,
 					price: moneySchema,
 					stock: stockSchema,
-					img_url: z.url('Invalid image URL').optional()
+					img_url: z.url('URL gambar tidak valid').optional()
 				})
 			)
-			.min(1, 'At least one variant is required'),
+			.min(1, 'Minimal harus ada 1 varian'),
 		optionGroups: z
 			.array(
 				z.object({
@@ -69,7 +85,7 @@ export const productSchema = z
 								additionalPrice: moneySchema
 							})
 						)
-						.min(1, 'At least one option is required')
+						.min(1, 'Minimal harus ada 1 opsi')
 				})
 			)
 			.default([])
@@ -81,7 +97,7 @@ export const productSchema = z
 			if (variantNames.has(key)) {
 				ctx.addIssue({
 					code: 'custom',
-					message: 'Variant name must be unique',
+					message: 'Nama varian harus unik',
 					path: ['variants', index, 'name']
 				});
 			}
@@ -94,7 +110,7 @@ export const productSchema = z
 			if (optionGroupNames.has(groupKey)) {
 				ctx.addIssue({
 					code: 'custom',
-					message: 'Option group name must be unique',
+					message: 'Nama grup opsi harus unik',
 					path: ['optionGroups', groupIndex, 'name']
 				});
 			}
@@ -106,7 +122,7 @@ export const productSchema = z
 				if (optionNames.has(optionKey)) {
 					ctx.addIssue({
 						code: 'custom',
-						message: 'Option name must be unique within the same group',
+						message: 'Nama opsi harus unik dalam grup yang sama',
 						path: ['optionGroups', groupIndex, 'options', optionIndex, 'name']
 					});
 				}

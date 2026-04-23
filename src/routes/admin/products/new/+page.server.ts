@@ -7,7 +7,23 @@ import { db } from '$lib/server/db';
 import { categories, optionGroups, options, products, variants } from '$lib/server/db/schema';
 
 export const load: PageServerLoad = async () => {
-	const form = await superValidate(zod4(productSchema));
+	const form = await superValidate(
+		{
+			name: '',
+			description: '',
+			categoryId: '',
+			variants: [
+				{
+					name: '',
+					price: Number.NaN,
+					stock: Number.NaN,
+					img_url: ''
+				}
+			],
+			optionGroups: []
+		},
+		zod4(productSchema)
+	);
 	const categoryRows = await db
 		.select({
 			id: categories.id,
