@@ -228,10 +228,107 @@ export const actions = {
 						.where(and(eq(variants.productId, productId), inArray(variants.id, variantsToDelete)));
 				}
 
-				// TODO(stage 2): migrate optionGroups/options from full-replace to diff/upsert by id.
-				await tx.delete(optionGroups).where(eq(optionGroups.productId, productId));
+				// Stage 2 migration complete: option groups and options now use diff/upsert by id.
+				const existingOptionGroups = await tx
+					.select({
+						id: optionGroups.id
+					})
+					.from(optionGroups)
+					.where(eq(optionGroups.productId, productId));
 
-				for (const group of form.data.optionGroups) {
+				const existingGroupIds = new Set(existingOptionGroups.map((group) => group.id));
+				const incomingGroupIds = new Set(
+					form.data.optionGroups
+						.map((group) => group.id)
+						.filter((groupId): groupId is string => Boolean(groupId))
+				);
+
+				for (const incomingGroupId of incomingGroupIds) {
+					// Security/consistency guard: reject option group IDs that do not belong to current product.
+					if (!existingGroupIds.has(incomingGroupId)) {
+						throw error(400, 'Data opsi tidak valid. Silakan refresh halaman lalu coba lagi.');
+					}
+				}
+
+				const groupsToUpdate = form.data.optionGroups.filter(
+					(group) => typeof group.id === 'string' && existingGroupIds.has(group.id)
+				);
+				const groupsToCreate = form.data.optionGroups.filter((group) => !group.id);
+				const groupsToDelete = existingOptionGroups
+					.map((group) => group.id)
+					.filter((existingGroupId) => !incomingGroupIds.has(existingGroupId));
+
+				for (const group of groupsToUpdate) {
+					const groupId = group.id;
+					if (!groupId) continue;
+
+					await tx
+						.update(optionGroups)
+						.set({
+							name: group.name.trim()
+						})
+						.where(and(eq(optionGroups.id, groupId), eq(optionGroups.productId, productId)));
+
+					const existingOptions = await tx
+						.select({
+							id: options.id
+						})
+						.from(options)
+						.where(eq(options.optionGroupId, groupId));
+
+					const existingOptionIds = new Set(existingOptions.map((option) => option.id));
+					const incomingOptionIds = new Set(
+						group.options
+							.map((option) => option.id)
+							.filter((optionId): optionId is string => Boolean(optionId))
+					);
+
+					for (const incomingOptionId of incomingOptionIds) {
+						// Security/consistency guard: reject option IDs that do not belong to current option group.
+						if (!existingOptionIds.has(incomingOptionId)) {
+							throw error(400, 'Data opsi tidak valid. Silakan refresh halaman lalu coba lagi.');
+						}
+					}
+
+					const optionsToUpdate = group.options.filter(
+						(option) => typeof option.id === 'string' && existingOptionIds.has(option.id)
+					);
+					const optionsToCreate = group.options.filter((option) => !option.id);
+					const optionsToDelete = existingOptions
+						.map((option) => option.id)
+						.filter((existingOptionId) => !incomingOptionIds.has(existingOptionId));
+
+					for (const option of optionsToUpdate) {
+						const optionId = option.id;
+						if (!optionId) continue;
+
+						await tx
+							.update(options)
+							.set({
+								name: option.name.trim(),
+								additionalPrice: option.additionalPrice
+							})
+							.where(and(eq(options.id, optionId), eq(options.optionGroupId, groupId)));
+					}
+
+					if (optionsToCreate.length > 0) {
+						await tx.insert(options).values(
+							optionsToCreate.map((option) => ({
+								optionGroupId: groupId,
+								name: option.name.trim(),
+								additionalPrice: option.additionalPrice
+							}))
+						);
+					}
+
+					if (optionsToDelete.length > 0) {
+						await tx
+							.delete(options)
+							.where(and(eq(options.optionGroupId, groupId), inArray(options.id, optionsToDelete)));
+					}
+				}
+
+				for (const group of groupsToCreate) {
 					const [createdGroup] = await tx
 						.insert(optionGroups)
 						.values({
@@ -244,13 +341,23 @@ export const actions = {
 						throw new Error('Failed to create option group.');
 					}
 
-					await tx.insert(options).values(
-						group.options.map((option) => ({
-							optionGroupId: createdGroup.id,
-							name: option.name.trim(),
-							additionalPrice: option.additionalPrice
-						}))
-					);
+					if (group.options.length > 0) {
+						await tx.insert(options).values(
+							group.options.map((option) => ({
+								optionGroupId: createdGroup.id,
+								name: option.name.trim(),
+								additionalPrice: option.additionalPrice
+							}))
+						);
+					}
+				}
+
+				if (groupsToDelete.length > 0) {
+					await tx
+						.delete(optionGroups)
+						.where(
+							and(eq(optionGroups.productId, productId), inArray(optionGroups.id, groupsToDelete))
+						);
 				}
 			});
 
@@ -276,6 +383,14 @@ export const actions = {
 				'status' in caughtError &&
 				(caughtError.status === 404 || caughtError.status === 400)
 			) {
+				const errorBody = 'body' in caughtError ? caughtError.body : undefined;
+				const errorMessage =
+					typeof errorBody === 'object' &&
+					errorBody !== null &&
+					'message' in errorBody &&
+					typeof errorBody.message === 'string'
+						? errorBody.message
+						: undefined;
 				const notFound = caughtError.status === 404;
 				return message(
 					form,
@@ -283,7 +398,8 @@ export const actions = {
 						type: 'error',
 						text: notFound
 							? 'Produk tidak ditemukan.'
-							: 'Data varian tidak valid. Silakan refresh halaman lalu coba lagi.'
+							: (errorMessage ??
+								'Data varian/opsi tidak valid. Silakan refresh halaman lalu coba lagi.')
 					},
 					{ status: caughtError.status }
 				);
