@@ -6,6 +6,7 @@
 	import { zod4Client } from 'sveltekit-superforms/adapters';
 	import { type Infer, type SuperValidated, superForm } from 'sveltekit-superforms';
 	import { productSchema } from '$lib/validation/product/product.schema';
+	import { generateSlug } from '$lib/utils/string.js';
 	import BasicInformationSection from './basic-information-section.svelte';
 	import OptionGroupsSection from './option-groups-section.svelte';
 	import ProductFormSidebar from './product-form-sidebar.svelte';
@@ -50,6 +51,13 @@
 	});
 
 	const { form: formData, enhance, submitting } = form;
+
+	$effect(() => {
+		const generatedSlug = generateSlug(($formData.name ?? '').toString());
+		if ($formData.slug !== generatedSlug) {
+			$formData.slug = generatedSlug;
+		}
+	});
 
 	const variantCount = $derived(($formData.variants ?? []).length);
 	const lowestPrice = $derived(

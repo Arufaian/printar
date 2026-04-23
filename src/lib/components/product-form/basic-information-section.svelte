@@ -37,6 +37,16 @@
 			<Form.FieldErrors />
 		</Form.Field>
 
+		<Form.Field {form} name="slug">
+			<Form.Control>
+				{#snippet children({ props })}
+					<Form.Label>Slug</Form.Label>
+					<Input {...props} bind:value={$formData.slug} readonly placeholder="slug-produk" />
+				{/snippet}
+			</Form.Control>
+			<Form.FieldErrors />
+		</Form.Field>
+
 		<Form.Field {form} name="categoryId">
 			<Form.Control>
 				{#snippet children({ props })}

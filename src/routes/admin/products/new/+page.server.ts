@@ -5,11 +5,14 @@ import { zod4 } from 'sveltekit-superforms/adapters';
 import { fail } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { categories, optionGroups, options, products, variants } from '$lib/server/db/schema';
+import { DrizzleQueryError } from 'drizzle-orm';
+import { generateSlug } from '$lib/utils/string';
 
 export const load: PageServerLoad = async () => {
 	const form = await superValidate(
 		{
 			name: '',
+			slug: '',
 			description: '',
 			categoryId: '',
 			variants: [
@@ -64,8 +67,9 @@ export const actions = {
 		console.error(form.errors);
 
 		// NOTE: Trim textual values on save so database stays clean while client typing stays natural.
-		const { name, description, categoryId } = form.data;
+		const { name, slug, description, categoryId } = form.data;
 		const sanitizedName = name.trim();
+		const sanitizedSlug = generateSlug(slug);
 		const sanitizedDescription = description?.trim();
 
 		try {
@@ -74,6 +78,7 @@ export const actions = {
 					.insert(products)
 					.values({
 						name: sanitizedName,
+						slug: sanitizedSlug,
 						description: sanitizedDescription,
 						categoryId
 					})
@@ -123,6 +128,17 @@ export const actions = {
 				text: 'Produk berhasil ditambahkan.'
 			});
 		} catch (error) {
+			if (error instanceof DrizzleQueryError) {
+				return message(
+					form,
+					{
+						type: 'error',
+						text: 'Slug produk sudah digunakan. Silakan ubah nama produk.'
+					},
+					{ status: 500 }
+				);
+			}
+
 			console.error(error);
 
 			return message(

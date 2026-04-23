@@ -8,6 +8,12 @@ const productNameSchema = z
 	.refine(hasVisibleText, 'Nama produk wajib diisi')
 	.max(120, 'Nama produk maksimal 120 karakter');
 
+const productSlugSchema = z
+	.string()
+	.refine(hasVisibleText, 'Slug produk wajib diisi')
+	.regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Format slug tidak valid')
+	.max(160, 'Slug produk maksimal 160 karakter');
+
 const categoryIdSchema = z.uuid('Kategori wajib dipilih');
 
 const variantNameSchema = z
@@ -66,6 +72,7 @@ export const productSchema = z
 	.object({
 		id: z.uuid().optional(),
 		name: productNameSchema,
+		slug: productSlugSchema,
 		description: z.string().trim().optional(),
 		categoryId: categoryIdSchema,
 		variants: z

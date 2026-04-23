@@ -1,11 +1,12 @@
 import { error, fail } from '@sveltejs/kit';
-import { eq } from 'drizzle-orm';
+import { DrizzleQueryError, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '$lib/server/db';
 import { categories, optionGroups, options, products, variants } from '$lib/server/db/schema';
 import { message, superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import { productSchema } from '$lib/validation/product/product.schema';
+import { generateSlug } from '$lib/utils/string';
 import type { Actions, PageServerLoad } from './$types';
 
 const productIdSchema = z.uuid('ID produk tidak valid.');
@@ -23,6 +24,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		.select({
 			id: products.id,
 			name: products.name,
+			slug: products.slug,
 			description: products.description,
 			categoryId: products.categoryId
 		})
@@ -86,6 +88,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		{
 			id: product.id,
 			name: product.name ?? '',
+			slug: product.slug ?? '',
 			description: product.description ?? '',
 			categoryId: product.categoryId ?? '',
 			variants:
@@ -142,6 +145,7 @@ export const actions = {
 		}
 
 		const sanitizedName = form.data.name.trim();
+		const sanitizedSlug = generateSlug(form.data.slug);
 		const sanitizedDescription = form.data.description?.trim();
 
 		try {
@@ -150,6 +154,7 @@ export const actions = {
 					.update(products)
 					.set({
 						name: sanitizedName,
+						slug: sanitizedSlug,
 						description: sanitizedDescription,
 						categoryId: form.data.categoryId
 					})
@@ -201,6 +206,17 @@ export const actions = {
 				text: 'Produk berhasil diperbarui.'
 			});
 		} catch (caughtError) {
+			if (caughtError instanceof DrizzleQueryError) {
+				return message(
+					form,
+					{
+						type: 'error',
+						text: 'Slug produk sudah digunakan. Silakan ubah nama produk.'
+					},
+					{ status: 500 }
+				);
+			}
+
 			if (
 				typeof caughtError === 'object' &&
 				caughtError !== null &&
