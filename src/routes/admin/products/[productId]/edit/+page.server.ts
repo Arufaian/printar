@@ -1,12 +1,12 @@
-import { error } from '@sveltejs/kit';
+import { error, fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '$lib/server/db';
 import { categories, optionGroups, options, products, variants } from '$lib/server/db/schema';
-import { superValidate } from 'sveltekit-superforms';
+import { message, superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import { productSchema } from '$lib/validation/product/product.schema';
-import type { PageServerLoad } from './$types';
+import type { Actions, PageServerLoad } from './$types';
 
 const productIdSchema = z.uuid('ID produk tidak valid.');
 
@@ -114,3 +114,119 @@ export const load: PageServerLoad = async ({ params }) => {
 		categoryOptions
 	};
 };
+
+export const actions = {
+	default: async (event) => {
+		const parsedProductId = productIdSchema.safeParse(event.params.productId);
+
+		if (!parsedProductId.success) {
+			return fail(400, { message: 'ID produk pada URL tidak valid.' });
+		}
+
+		const productId = parsedProductId.data;
+		const form = await superValidate(event, zod4(productSchema));
+
+		if (!form.valid) {
+			return fail(400, { form });
+		}
+
+		if (form.data.id && form.data.id !== productId) {
+			return message(
+				form,
+				{
+					type: 'error',
+					text: 'Data produk tidak sesuai. Silakan refresh halaman lalu coba lagi.'
+				},
+				{ status: 400 }
+			);
+		}
+
+		const sanitizedName = form.data.name.trim();
+		const sanitizedDescription = form.data.description?.trim();
+
+		try {
+			await db.transaction(async (tx) => {
+				const updatedProduct = await tx
+					.update(products)
+					.set({
+						name: sanitizedName,
+						description: sanitizedDescription,
+						categoryId: form.data.categoryId
+					})
+					.where(eq(products.id, productId))
+					.returning({ id: products.id });
+
+				if (updatedProduct.length === 0) {
+					throw error(404, 'Produk tidak ditemukan.');
+				}
+
+				await tx.delete(variants).where(eq(variants.productId, productId));
+				await tx.delete(optionGroups).where(eq(optionGroups.productId, productId));
+
+				await tx.insert(variants).values(
+					form.data.variants.map((variant) => ({
+						productId,
+						name: variant.name.trim(),
+						price: variant.price,
+						stock: variant.stock,
+						imgUrl: variant.img_url
+					}))
+				);
+
+				for (const group of form.data.optionGroups) {
+					const [createdGroup] = await tx
+						.insert(optionGroups)
+						.values({
+							productId,
+							name: group.name.trim()
+						})
+						.returning({ id: optionGroups.id });
+
+					if (!createdGroup?.id) {
+						throw new Error('Failed to create option group.');
+					}
+
+					await tx.insert(options).values(
+						group.options.map((option) => ({
+							optionGroupId: createdGroup.id,
+							name: option.name.trim(),
+							additionalPrice: option.additionalPrice
+						}))
+					);
+				}
+			});
+
+			return message(form, {
+				type: 'success',
+				text: 'Produk berhasil diperbarui.'
+			});
+		} catch (caughtError) {
+			if (
+				typeof caughtError === 'object' &&
+				caughtError !== null &&
+				'status' in caughtError &&
+				caughtError.status === 404
+			) {
+				return message(
+					form,
+					{
+						type: 'error',
+						text: 'Produk tidak ditemukan.'
+					},
+					{ status: 404 }
+				);
+			}
+
+			console.error(caughtError);
+
+			return message(
+				form,
+				{
+					type: 'error',
+					text: 'Gagal memperbarui produk. Silakan coba lagi.'
+				},
+				{ status: 500 }
+			);
+		}
+	}
+} satisfies Actions;
