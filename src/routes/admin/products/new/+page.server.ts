@@ -22,7 +22,8 @@ export const load: PageServerLoad = async () => {
 			],
 			optionGroups: []
 		},
-		zod4(productSchema)
+		zod4(productSchema),
+		{ errors: false }
 	);
 	const categoryRows = await db
 		.select({

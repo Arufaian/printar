@@ -146,7 +146,7 @@
 	};
 </script>
 
-<form method="POST" use:enhance>
+<form method="POST" use:enhance novalidate>
 	<div class="grid gap-4 lg:grid-cols-4">
 		<div class="space-y-4 lg:col-span-3">
 			<BasicInformationSection {form} {formData} categoryOptions={data.categoryOptions} />

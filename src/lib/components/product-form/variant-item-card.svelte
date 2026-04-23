@@ -81,7 +81,7 @@
 			return;
 		}
 
-		const parsedValue = Number.parseInt(target.value, 10);
+		const parsedValue = Number(target.value);
 		updateVariant({ price: Number.isNaN(parsedValue) ? Number.NaN : parsedValue });
 	};
 
@@ -92,7 +92,7 @@
 			return;
 		}
 
-		const parsedValue = Number.parseInt(target.value, 10);
+		const parsedValue = Number(target.value);
 		updateVariant({ stock: Number.isNaN(parsedValue) ? Number.NaN : parsedValue });
 	};
 

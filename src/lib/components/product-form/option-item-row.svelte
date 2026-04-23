@@ -34,8 +34,13 @@
 
 	const handleAdditionalPriceInput = (event: Event) => {
 		const target = event.currentTarget as HTMLInputElement;
-		const parsedValue = Number.parseInt(target.value, 10);
-		updateOption({ additionalPrice: Number.isNaN(parsedValue) ? 0 : parsedValue });
+		if (target.value.trim() === '') {
+			updateOption({ additionalPrice: Number.NaN });
+			return;
+		}
+
+		const parsedValue = Number(target.value);
+		updateOption({ additionalPrice: Number.isNaN(parsedValue) ? Number.NaN : parsedValue });
 	};
 </script>
 
@@ -70,7 +75,8 @@
 					{...props}
 					type="number"
 					min={0}
-					value={option.additionalPrice}
+					step={1}
+					value={Number.isFinite(option.additionalPrice) ? option.additionalPrice : ''}
 					oninput={handleAdditionalPriceInput}
 				/>
 			{/snippet}

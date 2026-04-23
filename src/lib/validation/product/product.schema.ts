@@ -55,6 +55,13 @@ const stockSchema = parseRequiredInteger(
 	'Stok minimal 1'
 );
 
+const additionalPriceSchema = parseRequiredInteger(
+	'Biaya tambahan wajib diisi',
+	'Biaya tambahan harus berupa bilangan bulat',
+	0,
+	'Biaya tambahan tidak boleh kurang dari 0'
+);
+
 export const productSchema = z
 	.object({
 		id: z.uuid().optional(),
@@ -82,7 +89,7 @@ export const productSchema = z
 							z.object({
 								id: z.uuid().optional(),
 								name: optionNameSchema,
-								additionalPrice: moneySchema
+								additionalPrice: additionalPriceSchema
 							})
 						)
 						.min(1, 'Minimal harus ada 1 opsi')
