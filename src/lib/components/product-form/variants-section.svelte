@@ -7,12 +7,17 @@
 		form,
 		variants = $bindable(),
 		onAddVariant,
-		onRemoveVariant
+		onRemoveVariant,
+		onVariantImageUploaded
 	}: {
 		form: ProductSuperForm;
 		variants: ProductVariant[];
 		onAddVariant: () => void;
 		onRemoveVariant: (index: number) => void | Promise<void>;
+		onVariantImageUploaded: (payload: {
+			previousUrl?: string;
+			nextUrl: string;
+		}) => void | Promise<void>;
 	} = $props();
 
 	const updateVariant = (index: number, nextVariant: ProductVariant) => {
@@ -38,6 +43,7 @@
 				{form}
 				{variant}
 				onVariantChange={(nextVariant) => updateVariant(index, nextVariant)}
+				onImageUploaded={onVariantImageUploaded}
 				{index}
 				canRemove={variants.length > 1}
 				onRemove={() => onRemoveVariant(index)}

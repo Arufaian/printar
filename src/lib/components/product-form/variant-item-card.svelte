@@ -19,7 +19,8 @@
 		index,
 		canRemove,
 		onVariantChange,
-		onRemove
+		onRemove,
+		onImageUploaded
 	}: {
 		form: ProductSuperForm;
 		variant: ProductVariant;
@@ -27,6 +28,7 @@
 		canRemove: boolean;
 		onVariantChange: (nextVariant: ProductVariant) => void;
 		onRemove: () => void;
+		onImageUploaded?: (payload: { previousUrl?: string; nextUrl: string }) => void | Promise<void>;
 	} = $props();
 
 	let imageFileInput = $state<HTMLInputElement | null>(null);
@@ -53,20 +55,6 @@
 		// Simpan file di folder variant agar struktur bucket tetap rapih.
 		const extension = fileName.split('.').pop()?.toLowerCase() ?? 'jpg';
 		return `product-variant/${crypto.randomUUID()}.${extension}`;
-	};
-
-	const getBucketObjectPathFromPublicUrl = (publicUrl?: string) => {
-		if (!publicUrl) return null;
-
-		try {
-			const parsedUrl = new URL(publicUrl);
-			const prefix = `/storage/v1/object/public/${PUBLIC_BUCKET_NAME}/`;
-			if (!parsedUrl.pathname.startsWith(prefix)) return null;
-
-			return decodeURIComponent(parsedUrl.pathname.slice(prefix.length));
-		} catch {
-			return null;
-		}
 	};
 
 	const handleVariantNameInput = (event: Event) => {
@@ -147,18 +135,10 @@
 			// URL ini yang nanti disimpan ke form dan akan ikut ke server saat submit.
 			const { data } = supabase.storage.from(PUBLIC_BUCKET_NAME).getPublicUrl(filePath);
 			updateVariant({ img_url: data.publicUrl });
-
-			// Jika sebelumnya ada gambar dari bucket yang sama, hapus file lama agar tidak menumpuk.
-			const previousObjectPath = getBucketObjectPathFromPublicUrl(previousImageUrl);
-			if (previousObjectPath && previousObjectPath !== filePath) {
-				const { error: deleteError } = await supabase.storage
-					.from(PUBLIC_BUCKET_NAME)
-					.remove([previousObjectPath]);
-
-				if (deleteError) {
-					toast.warning('Gambar baru tersimpan, tetapi gambar lama gagal dihapus.');
-				}
-			}
+			await onImageUploaded?.({
+				previousUrl: previousImageUrl,
+				nextUrl: data.publicUrl
+			});
 
 			toast.success('Gambar berhasil diupload.');
 		} catch (error) {

@@ -28,16 +28,45 @@
 
 	const getInitialForm = () => data.form;
 
+	const normalizeImageUrl = (publicUrl?: string | null) => {
+		const normalizedUrl = publicUrl?.trim();
+		return normalizedUrl ? normalizedUrl : null;
+	};
+
+	const collectVariantImageUrls = (variants: Array<{ img_url?: string | null }> = []) => {
+		const imageUrls = new Set<string>();
+
+		for (const variant of variants) {
+			const normalizedUrl = normalizeImageUrl(variant.img_url);
+			if (!normalizedUrl) continue;
+			imageUrls.add(normalizedUrl);
+		}
+
+		return imageUrls;
+	};
+
+	const initialImageUrls = collectVariantImageUrls(getInitialForm().data.variants ?? []);
+	const uploadedDuringSession = new Set<string>();
+	const replacedOldUrls = new Set<string>();
+	const removedFromFormUrls = new Set<string>();
+
 	const form = superForm(getInitialForm(), {
 		validators: zod4Client(productSchema),
 		dataType: 'json',
 		multipleSubmits: 'prevent',
 		resetForm: false,
 
-		onUpdated: ({ form: updatedForm }) => {
+		onUpdated: async ({ form: updatedForm }) => {
 			if (!updatedForm.message) return;
 
 			if (updatedForm.message.type === 'success') {
+				const cleanupResult = await cleanupImagesAfterSuccessfulSubmit();
+				if (cleanupResult.failedCount > 0) {
+					toast.warning(
+						'Produk berhasil diperbarui, tetapi ada gambar lama yang gagal dibersihkan dari storage.'
+					);
+				}
+
 				toast.success(updatedForm.message.text);
 				setTimeout(() => {
 					goto(resolve('/admin/products'));
@@ -53,6 +82,7 @@
 
 	const { form: formData, enhance, submitting } = form;
 	let showSubmittingOverlay = $state(false);
+	let isBackProcessing = $state(false);
 	let submittingOverlayTimer: ReturnType<typeof setTimeout> | null = null;
 
 	$effect(() => {
@@ -131,23 +161,98 @@
 		}
 	};
 
-	const removeVariant = async (index: number) => {
+	const deleteImageUrlsFromStorage = async (imageUrls: Iterable<string>) => {
+		const objectPaths = Array.from(
+			new Set(
+				Array.from(imageUrls)
+					.map((imageUrl) => getBucketObjectPathFromPublicUrl(imageUrl))
+					.filter((objectPath): objectPath is string => Boolean(objectPath))
+			)
+		);
+
+		if (objectPaths.length === 0) {
+			return { deletedCount: 0, failedCount: 0 };
+		}
+
+		const supabase = page.data.supabase;
+		if (!supabase) {
+			return { deletedCount: 0, failedCount: objectPaths.length };
+		}
+
+		try {
+			const { error } = await supabase.storage.from(BUCKET_NAME).remove(objectPaths);
+
+			if (error) {
+				return { deletedCount: 0, failedCount: objectPaths.length };
+			}
+
+			return { deletedCount: objectPaths.length, failedCount: 0 };
+		} catch {
+			return { deletedCount: 0, failedCount: objectPaths.length };
+		}
+	};
+
+	const handleVariantImageUploaded = (payload: { previousUrl?: string; nextUrl: string }) => {
+		const previousUrl = normalizeImageUrl(payload.previousUrl);
+		const nextUrl = normalizeImageUrl(payload.nextUrl);
+
+		if (!nextUrl) return;
+		uploadedDuringSession.add(nextUrl);
+
+		if (previousUrl && previousUrl !== nextUrl) {
+			replacedOldUrls.add(previousUrl);
+		}
+	};
+
+	const cleanupImagesAfterSuccessfulSubmit = async () => {
+		const finalImageUrls = collectVariantImageUrls($formData.variants ?? []);
+		const candidateUrls = new Set<string>();
+
+		for (const imageUrl of replacedOldUrls) {
+			if (!finalImageUrls.has(imageUrl)) {
+				candidateUrls.add(imageUrl);
+			}
+		}
+
+		for (const imageUrl of removedFromFormUrls) {
+			if (!finalImageUrls.has(imageUrl)) {
+				candidateUrls.add(imageUrl);
+			}
+		}
+
+		for (const imageUrl of uploadedDuringSession) {
+			if (!finalImageUrls.has(imageUrl)) {
+				candidateUrls.add(imageUrl);
+			}
+		}
+
+		return deleteImageUrlsFromStorage(candidateUrls);
+	};
+
+	const handleBack = async () => {
+		if (isBackProcessing || $submitting) return;
+		isBackProcessing = true;
+
+		const draftOnlyUploads = Array.from(uploadedDuringSession).filter(
+			(imageUrl) => !initialImageUrls.has(imageUrl)
+		);
+
+		const cleanupResult = await deleteImageUrlsFromStorage(draftOnlyUploads);
+		if (cleanupResult.failedCount > 0) {
+			toast.warning('Sebagian gambar draft gagal dibersihkan dari storage.');
+		}
+
+		await goto(resolve('/admin/products'));
+	};
+
+	const removeVariant = (index: number) => {
 		const currentVariants = $formData.variants ?? [];
 		if (currentVariants.length === 1) return;
 
 		const variantToRemove = currentVariants[index];
-		const objectPath = getBucketObjectPathFromPublicUrl(variantToRemove?.img_url);
-
-		if (objectPath && page.data.supabase) {
-			try {
-				const { error } = await page.data.supabase.storage.from(BUCKET_NAME).remove([objectPath]);
-
-				if (error) {
-					toast.warning('Variant dihapus, tetapi gambar lama gagal dihapus dari storage.');
-				}
-			} catch {
-				toast.warning('Variant dihapus, tetapi terjadi kendala saat menghapus gambar lama.');
-			}
+		const imageUrl = normalizeImageUrl(variantToRemove?.img_url);
+		if (imageUrl) {
+			removedFromFormUrls.add(imageUrl);
 		}
 
 		$formData.variants = currentVariants.filter((_, idx) => idx !== index);
@@ -194,6 +299,7 @@
 				bind:variants={$formData.variants}
 				onAddVariant={addVariant}
 				onRemoveVariant={removeVariant}
+				onVariantImageUploaded={handleVariantImageUploaded}
 			/>
 			<OptionGroupsSection
 				{form}
@@ -204,6 +310,13 @@
 				onRemoveOption={removeOption}
 			/>
 		</div>
-		<ProductFormSidebar {variantCount} {lowestPrice} {totalStock} submitting={$submitting} />
+		<ProductFormSidebar
+			{variantCount}
+			{lowestPrice}
+			{totalStock}
+			submitting={$submitting}
+			onBack={handleBack}
+			{isBackProcessing}
+		/>
 	</div>
 </form>

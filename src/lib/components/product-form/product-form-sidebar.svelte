@@ -1,26 +1,35 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import { formatIDR } from '$lib/utils/currency';
-	import { resolve } from '$app/paths';
 
 	let {
 		variantCount,
 		lowestPrice,
 		totalStock,
-		submitting
+		submitting,
+		onBack,
+		isBackProcessing = false
 	}: {
 		variantCount: number;
 		lowestPrice: number | null;
 		totalStock: number;
 		submitting: boolean;
+		onBack: () => void | Promise<void>;
+		isBackProcessing?: boolean;
 	} = $props();
 </script>
 
 <aside class="space-y-4 lg:col-span-1">
 	<div class="flex flex-col gap-3 rounded-lg border bg-card p-3">
-		<a href={resolve('/admin/products')}>
-			<Button type="button" class="w-full" variant="outline">Kembali</Button>
-		</a>
+		<Button
+			type="button"
+			class="w-full"
+			variant="outline"
+			onclick={onBack}
+			disabled={submitting || isBackProcessing}
+		>
+			{isBackProcessing ? 'Memproses...' : 'Kembali'}
+		</Button>
 		<Button type="submit" class="w-full" disabled={submitting}>Publikasikan</Button>
 	</div>
 	<div class="rounded-lg border bg-card p-4">
