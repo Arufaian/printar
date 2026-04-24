@@ -5,6 +5,7 @@
 	import { toast } from 'svelte-sonner';
 	import { zod4Client } from 'sveltekit-superforms/adapters';
 	import { type Infer, type SuperValidated, superForm } from 'sveltekit-superforms';
+	import { LoadingOverlay } from '$lib/components/ui/loading-overlay/index.js';
 	import { productSchema } from '$lib/validation/product/product.schema';
 	import { generateSlug } from '$lib/utils/string.js';
 	import BasicInformationSection from './basic-information-section.svelte';
@@ -51,6 +52,32 @@
 	});
 
 	const { form: formData, enhance, submitting } = form;
+	let showSubmittingOverlay = $state(false);
+	let submittingOverlayTimer: ReturnType<typeof setTimeout> | null = null;
+
+	$effect(() => {
+		const isSubmitting = $submitting;
+
+		if (isSubmitting) {
+			submittingOverlayTimer = setTimeout(() => {
+				showSubmittingOverlay = true;
+				submittingOverlayTimer = null;
+			}, 180);
+		} else {
+			if (submittingOverlayTimer) {
+				clearTimeout(submittingOverlayTimer);
+				submittingOverlayTimer = null;
+			}
+			showSubmittingOverlay = false;
+		}
+
+		return () => {
+			if (submittingOverlayTimer) {
+				clearTimeout(submittingOverlayTimer);
+				submittingOverlayTimer = null;
+			}
+		};
+	});
 
 	$effect(() => {
 		const generatedSlug = generateSlug(($formData.name ?? '').toString());
@@ -153,6 +180,10 @@
 		$formData.optionGroups = groups;
 	};
 </script>
+
+{#if showSubmittingOverlay}
+	<LoadingOverlay message="Menyimpan perubahan..." />
+{/if}
 
 <form method="POST" use:enhance novalidate>
 	<div class="grid gap-4 lg:grid-cols-4">

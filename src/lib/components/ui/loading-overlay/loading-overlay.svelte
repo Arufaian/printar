@@ -11,7 +11,7 @@
 	aria-label={message}
 >
 	<div class="flex items-center gap-2 rounded-md border bg-card/85 px-4 py-3 shadow-sm">
-		<Spinner class="size-4" />
-		<span class="text-sm text-foreground">{message}</span>
+		<Spinner class="size-6 text-primary" />
+		<span class="text-md text-foreground">{message}</span>
 	</div>
 </div>

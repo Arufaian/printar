@@ -1,5 +1,5 @@
 import { error, fail } from '@sveltejs/kit';
-import { DrizzleQueryError, eq } from 'drizzle-orm';
+import { DrizzleQueryError, eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '$lib/server/db';
 import { categories, optionGroups, options, products, variants } from '$lib/server/db/schema';
@@ -63,28 +63,51 @@ export const load: PageServerLoad = async ({ params }) => {
 		.from(optionGroups)
 		.where(eq(optionGroups.productId, productId));
 
-	const optionGroupsWithOptions = await Promise.all(
-		optionGroupRows.map(async (group) => {
-			const groupOptions = await db
-				.select({
-					id: options.id,
-					name: options.name,
-					additionalPrice: options.additionalPrice
-				})
-				.from(options)
-				.where(eq(options.optionGroupId, group.id));
+	const optionGroupIds = optionGroupRows.map((group) => group.id);
+	const optionRows =
+		optionGroupIds.length > 0
+			? await db
+					.select({
+						id: options.id,
+						name: options.name,
+						additionalPrice: options.additionalPrice,
+						optionGroupId: options.optionGroupId
+					})
+					.from(options)
+					.where(inArray(options.optionGroupId, optionGroupIds))
+			: [];
 
-			return {
-				id: group.id,
-				name: group.name ?? '',
-				options: groupOptions.map((option) => ({
-					id: option.id,
-					name: option.name ?? '',
-					additionalPrice: option.additionalPrice ?? 0
-				}))
-			};
-		})
-	);
+	const optionsByGroupId = new Map<
+		string,
+		Array<{ id: string; name: string | null; additionalPrice: number | null }>
+	>();
+
+	for (const option of optionRows) {
+		const groupId = option.optionGroupId;
+		if (!groupId) continue;
+
+		const groupOptions = optionsByGroupId.get(groupId) ?? [];
+		groupOptions.push({
+			id: option.id,
+			name: option.name,
+			additionalPrice: option.additionalPrice
+		});
+		optionsByGroupId.set(groupId, groupOptions);
+	}
+
+	const optionGroupsWithOptions = optionGroupRows.map((group) => {
+		const groupOptions = optionsByGroupId.get(group.id) ?? [];
+
+		return {
+			id: group.id,
+			name: group.name ?? '',
+			options: groupOptions.map((option) => ({
+				id: option.id,
+				name: option.name ?? '',
+				additionalPrice: option.additionalPrice ?? 0
+			}))
+		};
+	});
 
 	const categoryRows = await db
 		.select({
