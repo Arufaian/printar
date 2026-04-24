@@ -6,7 +6,6 @@
 	import ThemeSwitch from '$lib/components/navbar/theme-switch.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 
 	import type { UserProfile } from '$lib/types/user-profile';
@@ -19,24 +18,6 @@
 	};
 
 	let { cartCount = 3, userProfile = null }: Props = $props();
-
-	const sectionLinks: Array<{ href: `/#${string}`; label: string; description: string }> = [
-		{
-			href: '/#home',
-			label: 'Home',
-			description: 'Jump to our featured intro and latest highlights.'
-		},
-		{
-			href: '/#categories',
-			label: 'Categories',
-			description: 'Browse grouped product types by campaign or intent.'
-		},
-		{
-			href: '/#catalog-carousel',
-			label: 'Catalog Carousel',
-			description: 'Preview quick picks and current product recommendations.'
-		}
-	];
 </script>
 
 <nav class="sticky top-0 z-50 border-b bg-background/95 backdrop-blur-sm">
@@ -50,32 +31,18 @@
 			<span class="hidden text-base font-semibold md:inline">DigitalPrint</span>
 		</a>
 
-		<div class="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+		<div class="ml-2 flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
 			<div class="shrink-0">
 				<!-- todo: later on i'll use hooks if mobile device -->
 				<div class="hidden md:inline-flex">
-					<DropdownMenu.Root>
-						<DropdownMenu.Trigger
-							class="inline-flex h-16 items-center gap-1.5 rounded-md  px-2 text-sm font-medium ring-0 sm:px-3"
-						>
-							<div class="flex items-center justify-center gap-1.5">
-								<LayoutDashboard class="size-4" /> <span>category</span>
-							</div>
-						</DropdownMenu.Trigger>
-
-						<DropdownMenu.Content class="w-md">
-							<div class="grid grid-cols-2 gap-4">
-								{#each sectionLinks as item (item)}
-									<DropdownMenu.Item>
-										<a href={resolve('/')}>
-											<span class="text-base font-semibold">{item.label}</span>
-											<p class="text-sm">{item.description}</p></a
-										>
-									</DropdownMenu.Item>
-								{/each}
-							</div>
-						</DropdownMenu.Content>
-					</DropdownMenu.Root>
+					<div class="flex items-center justify-center">
+						<a href={resolve('/categories')}>
+							<Button variant="link">
+								<LayoutDashboard class="size-4" />
+								Kategori</Button
+							>
+						</a>
+					</div>
 				</div>
 			</div>
 

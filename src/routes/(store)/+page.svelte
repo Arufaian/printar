@@ -13,5 +13,5 @@
 	<Hero />
 	<FeatureSection title="Kenapa memilih kami" />
 
-	<CatalogCarouselSection title="Featured Products" route="/test" {products} />
+	<CatalogCarouselSection title="Produk terbaru" route="/categories" {products} />
 </main>
