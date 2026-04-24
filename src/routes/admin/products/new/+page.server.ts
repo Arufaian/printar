@@ -54,18 +54,6 @@ export const actions = {
 			return fail(400, { form });
 		}
 
-		console.log('form data:');
-		console.log(form.data);
-
-		console.log('form variants:');
-		console.log(form.data.variants);
-
-		console.log('form options:');
-		console.log(form.data.optionGroups);
-
-		console.log('form error:');
-		console.error(form.errors);
-
 		// NOTE: Trim textual values on save so database stays clean while client typing stays natural.
 		const { name, slug, description, categoryId } = form.data;
 		const sanitizedName = name.trim();
