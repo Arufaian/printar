@@ -134,6 +134,13 @@
       "when": 1776940017289,
       "tag": "0018_lean_rockslide",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1777100015501,
+      "tag": "0019_foamy_shape",
+      "breakpoints": true
     }
   ]
 }

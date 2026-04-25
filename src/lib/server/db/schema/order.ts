@@ -3,6 +3,7 @@ import { profiles } from './profiles';
 import { addresses } from './address';
 
 export const orderStatusEnum = pgEnum('order_status', [
+	'draft',
 	'pending_payment',
 	'paid',
 	'file_review',
