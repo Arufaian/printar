@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray } from 'drizzle-orm';
-import { redirect } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
+import { fail, redirect } from '@sveltejs/kit';
+import type { Actions } from './$types';
 import { db } from '$lib/server/db';
 import {
 	orderItemOptions,
@@ -22,13 +22,16 @@ type CartItemData = {
 	stock: number;
 };
 
-export const load: PageServerLoad = async (event) => {
-	const { user } = await event.locals.safeGetSession();
+class CartActionError extends Error {
+	status: number;
 
-	if (!user) {
-		throw redirect(303, '/sign-in?redirect=/cart');
+	constructor(status: number, message: string) {
+		super(message);
+		this.status = status;
 	}
+}
 
+const loadDraftOrder = async (userId: string) => {
 	const [draftOrder] = await db
 		.select({
 			id: orders.id,
@@ -36,9 +39,15 @@ export const load: PageServerLoad = async (event) => {
 			totalPrice: orders.totalPrice
 		})
 		.from(orders)
-		.where(and(eq(orders.profileId, user.id), eq(orders.status, 'draft')))
+		.where(and(eq(orders.profileId, userId), eq(orders.status, 'draft')))
 		.orderBy(desc(orders.createdAt))
 		.limit(1);
+
+	return draftOrder ?? null;
+};
+
+const buildCartPayload = async (userId: string) => {
+	const draftOrder = await loadDraftOrder(userId);
 
 	if (!draftOrder) {
 		return {
@@ -131,4 +140,197 @@ export const load: PageServerLoad = async (event) => {
 			total
 		}
 	};
+};
+
+const requireDraftItemOwnership = async (userId: string, itemId: string) => {
+	const [draftItem] = await db
+		.select({
+			orderId: orderItems.orderId,
+			itemId: orderItems.id,
+			variantStock: variants.stock
+		})
+		.from(orderItems)
+		.innerJoin(orders, eq(orderItems.orderId, orders.id))
+		.leftJoin(variants, eq(orderItems.variantId, variants.id))
+		.where(and(eq(orderItems.id, itemId), eq(orders.profileId, userId), eq(orders.status, 'draft')))
+		.limit(1);
+
+	if (!draftItem?.orderId || !draftItem.itemId) {
+		throw new CartActionError(404, 'Cart item not found.');
+	}
+
+	return {
+		orderId: draftItem.orderId,
+		itemId: draftItem.itemId,
+		variantStock: draftItem.variantStock ?? 0
+	};
+};
+
+export const load = async (
+	event: Parameters<NonNullable<import('./$types').PageServerLoad>>[0]
+) => {
+	const { user } = await event.locals.safeGetSession();
+
+	if (!user) {
+		throw redirect(303, '/sign-in?redirect=/cart');
+	}
+
+	return buildCartPayload(user.id);
+};
+
+export const actions: Actions = {
+	updateQuantity: async (event) => {
+		const { user } = await event.locals.safeGetSession();
+		if (!user) {
+			return fail(401, { message: 'Please sign in first.' });
+		}
+
+		const formData = await event.request.formData();
+		const itemId = String(formData.get('itemId') ?? '').trim();
+		const quantity = Number(formData.get('quantity'));
+
+		if (!itemId) {
+			return fail(400, { message: 'Cart item is required.' });
+		}
+
+		if (!Number.isInteger(quantity) || quantity < 1) {
+			return fail(400, { message: 'Quantity must be at least 1.' });
+		}
+
+		try {
+			const ownedItem = await requireDraftItemOwnership(user.id, itemId);
+			if (quantity > ownedItem.variantStock) {
+				return fail(400, { message: `Only ${ownedItem.variantStock} item(s) left in stock.` });
+			}
+
+			await db.transaction(async (tx) => {
+				await tx.update(orderItems).set({ quantity }).where(eq(orderItems.id, ownedItem.itemId));
+
+				const draftItems = await tx
+					.select({
+						id: orderItems.id,
+						quantity: orderItems.quantity,
+						price: orderItems.price
+					})
+					.from(orderItems)
+					.where(eq(orderItems.orderId, ownedItem.orderId));
+
+				const draftItemIds = draftItems
+					.map((item) => item.id)
+					.filter((itemId): itemId is string => Boolean(itemId));
+
+				const draftItemOptions =
+					draftItemIds.length > 0
+						? await tx
+								.select({
+									orderItemId: orderItemOptions.orderItemId,
+									price: orderItemOptions.price
+								})
+								.from(orderItemOptions)
+								.where(inArray(orderItemOptions.orderItemId, draftItemIds))
+						: [];
+
+				const optionPriceByItemId = new Map<string, number>();
+				for (const itemOption of draftItemOptions) {
+					if (!itemOption.orderItemId) continue;
+
+					const current = optionPriceByItemId.get(itemOption.orderItemId) ?? 0;
+					optionPriceByItemId.set(itemOption.orderItemId, current + (itemOption.price ?? 0));
+				}
+
+				const totalPrice = draftItems.reduce((total, item) => {
+					const unitPrice = (item.price ?? 0) + (optionPriceByItemId.get(item.id) ?? 0);
+					return total + unitPrice * (item.quantity ?? 0);
+				}, 0);
+
+				await tx.update(orders).set({ totalPrice }).where(eq(orders.id, ownedItem.orderId));
+			});
+
+			return {
+				type: 'success' as const,
+				text: 'Item quantity updated.'
+			};
+		} catch (err) {
+			if (err instanceof CartActionError) {
+				return fail(err.status, { message: err.message });
+			}
+
+			console.error('[cart:updateQuantity] unexpected error', err);
+			return fail(500, { message: 'Failed to update quantity. Please try again.' });
+		}
+	},
+
+	removeItem: async (event) => {
+		const { user } = await event.locals.safeGetSession();
+		if (!user) {
+			return fail(401, { message: 'Please sign in first.' });
+		}
+
+		const formData = await event.request.formData();
+		const itemId = String(formData.get('itemId') ?? '').trim();
+
+		if (!itemId) {
+			return fail(400, { message: 'Cart item is required.' });
+		}
+
+		try {
+			const ownedItem = await requireDraftItemOwnership(user.id, itemId);
+
+			await db.transaction(async (tx) => {
+				await tx.delete(orderItemOptions).where(eq(orderItemOptions.orderItemId, ownedItem.itemId));
+				await tx.delete(orderItems).where(eq(orderItems.id, ownedItem.itemId));
+
+				const draftItems = await tx
+					.select({
+						id: orderItems.id,
+						quantity: orderItems.quantity,
+						price: orderItems.price
+					})
+					.from(orderItems)
+					.where(eq(orderItems.orderId, ownedItem.orderId));
+
+				const draftItemIds = draftItems
+					.map((item) => item.id)
+					.filter((itemId): itemId is string => Boolean(itemId));
+
+				const draftItemOptions =
+					draftItemIds.length > 0
+						? await tx
+								.select({
+									orderItemId: orderItemOptions.orderItemId,
+									price: orderItemOptions.price
+								})
+								.from(orderItemOptions)
+								.where(inArray(orderItemOptions.orderItemId, draftItemIds))
+						: [];
+
+				const optionPriceByItemId = new Map<string, number>();
+				for (const itemOption of draftItemOptions) {
+					if (!itemOption.orderItemId) continue;
+
+					const current = optionPriceByItemId.get(itemOption.orderItemId) ?? 0;
+					optionPriceByItemId.set(itemOption.orderItemId, current + (itemOption.price ?? 0));
+				}
+
+				const totalPrice = draftItems.reduce((total, item) => {
+					const unitPrice = (item.price ?? 0) + (optionPriceByItemId.get(item.id) ?? 0);
+					return total + unitPrice * (item.quantity ?? 0);
+				}, 0);
+
+				await tx.update(orders).set({ totalPrice }).where(eq(orders.id, ownedItem.orderId));
+			});
+
+			return {
+				type: 'success' as const,
+				text: 'Item removed from cart.'
+			};
+		} catch (err) {
+			if (err instanceof CartActionError) {
+				return fail(err.status, { message: err.message });
+			}
+
+			console.error('[cart:removeItem] unexpected error', err);
+			return fail(500, { message: 'Failed to remove item. Please try again.' });
+		}
+	}
 };

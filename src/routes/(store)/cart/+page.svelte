@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
@@ -10,6 +11,7 @@
 	import Plus from '@lucide/svelte/icons/plus';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import type { PageProps } from './$types';
+	import { toast } from 'svelte-sonner';
 
 	type CartItem = {
 		id: string;
@@ -28,26 +30,18 @@
 
 	let selectedItemIds = $state<string[]>([]);
 	let shippingCost = $state(0);
-	let hasInitializedFromServer = $state(false);
-	let hasInitializedSelection = $state(false);
 
 	$effect(() => {
-		if (hasInitializedFromServer) return;
-		cartItems = [...data.cartItems];
+		const nextItems = data.cartItems;
+		cartItems = [...nextItems];
 		shippingCost = data.summary.shippingCost;
-		hasInitializedFromServer = true;
+		selectedItemIds = nextItems.map((item) => item.id);
 	});
 
 	const formatItemMeta = (item: CartItem) => {
 		if (item.options.length === 0) return item.variant;
 		return `${item.variant} • ${item.options.join(', ')}`;
 	};
-
-	$effect(() => {
-		if (hasInitializedSelection) return;
-		selectedItemIds = cartItems.map((item) => item.id);
-		hasInitializedSelection = true;
-	});
 
 	const isAllSelected = $derived(
 		cartItems.length > 0 && cartItems.every((item) => selectedItemIds.includes(item.id))
@@ -75,18 +69,43 @@
 		selectedItemIds = selectedItemIds.filter((id) => id !== itemId);
 	};
 
-	const updateItemQuantity = (itemId: string, nextQuantity: number) => {
-		cartItems = cartItems.map((item) => {
-			if (item.id !== itemId) return item;
-
-			const clamped = Math.max(1, Math.min(nextQuantity, item.stock));
-			return { ...item, quantity: clamped };
-		});
+	const getNextQuantity = (item: CartItem, delta: number) => {
+		const rawNext = item.quantity + delta;
+		const upperBound = item.stock > 0 ? item.stock : Number.MAX_SAFE_INTEGER;
+		return Math.max(1, Math.min(rawNext, upperBound));
 	};
 
-	const removeItem = (itemId: string) => {
-		cartItems = cartItems.filter((item) => item.id !== itemId);
-		selectedItemIds = selectedItemIds.filter((id) => id !== itemId);
+	const enhanceCartAction = () => {
+		return async ({
+			result,
+			update
+		}: {
+			result: { type: string; data?: unknown };
+			update: () => Promise<void>;
+		}) => {
+			if (result.type === 'success') {
+				const message =
+					typeof (result.data as { text?: unknown } | undefined)?.text === 'string'
+						? (result.data as { text: string }).text
+						: 'Cart updated.';
+
+				toast.success(message);
+				await update();
+				return;
+			}
+
+			if (result.type === 'failure') {
+				const message =
+					typeof (result.data as { message?: unknown } | undefined)?.message === 'string'
+						? (result.data as { message: string }).message
+						: 'Failed to update cart.';
+
+				toast.error(message);
+				return;
+			}
+
+			toast.error('Unexpected error while updating cart.');
+		};
 	};
 </script>
 
@@ -147,23 +166,33 @@
 
 							<Item.Actions class="items-center gap-2">
 								<div class="flex items-center gap-1">
-									<Button
-										size="icon-sm"
-										variant="outline"
-										aria-label={`Decrease quantity for ${item.title}`}
-										onclick={() => updateItemQuantity(item.id, item.quantity - 1)}
-									>
-										<Minus />
-									</Button>
+									<form method="POST" action="?/updateQuantity" use:enhance={enhanceCartAction}>
+										<input type="hidden" name="itemId" value={item.id} />
+										<input type="hidden" name="quantity" value={getNextQuantity(item, -1)} />
+										<Button
+											type="submit"
+											size="icon-sm"
+											variant="outline"
+											aria-label={`Decrease quantity for ${item.title}`}
+											disabled={item.quantity <= 1}
+										>
+											<Minus />
+										</Button>
+									</form>
 									<span class="w-8 text-center text-sm font-medium">{item.quantity}</span>
-									<Button
-										size="icon-sm"
-										variant="outline"
-										aria-label={`Increase quantity for ${item.title}`}
-										onclick={() => updateItemQuantity(item.id, item.quantity + 1)}
-									>
-										<Plus />
-									</Button>
+									<form method="POST" action="?/updateQuantity" use:enhance={enhanceCartAction}>
+										<input type="hidden" name="itemId" value={item.id} />
+										<input type="hidden" name="quantity" value={getNextQuantity(item, 1)} />
+										<Button
+											type="submit"
+											size="icon-sm"
+											variant="outline"
+											aria-label={`Increase quantity for ${item.title}`}
+											disabled={item.stock > 0 && item.quantity >= item.stock}
+										>
+											<Plus />
+										</Button>
+									</form>
 								</div>
 								<div class="min-w-28 text-right">
 									<p class="text-sm font-semibold">
@@ -171,14 +200,17 @@
 									</p>
 									<p class="text-xs text-muted-foreground">Stock: {item.stock}</p>
 								</div>
-								<Button
-									size="icon-sm"
-									variant="ghost"
-									aria-label={`Remove ${item.title} from cart`}
-									onclick={() => removeItem(item.id)}
-								>
-									<Trash2 />
-								</Button>
+								<form method="POST" action="?/removeItem" use:enhance={enhanceCartAction}>
+									<input type="hidden" name="itemId" value={item.id} />
+									<Button
+										type="submit"
+										size="icon-sm"
+										variant="ghost"
+										aria-label={`Remove ${item.title} from cart`}
+									>
+										<Trash2 />
+									</Button>
+								</form>
 							</Item.Actions>
 						</Item.Root>
 					{/each}

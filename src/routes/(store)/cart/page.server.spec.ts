@@ -1,14 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const selectMock = vi.hoisted(() => vi.fn());
+const transactionMock = vi.hoisted(() => vi.fn());
 
 vi.mock('$lib/server/db', () => ({
 	db: {
-		select: selectMock
+		select: selectMock,
+		transaction: transactionMock
 	}
 }));
 
-import { load } from './+page.server';
+import { actions, load } from './+page.server';
 
 const makeEvent = (userId: string | null) =>
 	({
@@ -18,6 +20,38 @@ const makeEvent = (userId: string | null) =>
 			}))
 		}
 	}) as unknown as Parameters<typeof load>[0];
+
+const buildFormRequest = (payload: Record<string, string>) => {
+	const formData = new URLSearchParams();
+	for (const [key, value] of Object.entries(payload)) {
+		formData.append(key, value);
+	}
+
+	return new Request('http://localhost/cart', {
+		method: 'POST',
+		headers: { 'content-type': 'application/x-www-form-urlencoded' },
+		body: formData.toString()
+	});
+};
+
+const makeActionEvent = (payload: Record<string, string>, userId: string | null) =>
+	({
+		request: buildFormRequest(payload),
+		locals: {
+			safeGetSession: vi.fn(async () => ({
+				user: userId ? { id: userId } : null
+			}))
+		}
+	}) as unknown as Parameters<NonNullable<typeof actions.updateQuantity>>[0];
+
+type ActionFailureResult = {
+	status: number;
+	data: {
+		message?: string;
+	};
+};
+
+const asActionFailureResult = (value: unknown) => value as ActionFailureResult;
 
 const mockDraftOrderQuery = (
 	rows: Array<{ id: string; shippingCost: number | null; totalPrice: number | null }>
@@ -129,5 +163,45 @@ describe('store cart page server load', () => {
 			shippingCost: 1000,
 			total: 22000
 		});
+	});
+
+	it('updateQuantity rejects unauthenticated users', async () => {
+		const result = await actions.updateQuantity(
+			makeActionEvent({ itemId: 'item-1', quantity: '2' }, null)
+		);
+		const output = asActionFailureResult(result);
+
+		expect(output.status).toBe(401);
+		expect(output.data.message).toContain('Please sign in first');
+		expect(selectMock).not.toHaveBeenCalled();
+	});
+
+	it('updateQuantity rejects invalid quantity before DB query', async () => {
+		const result = await actions.updateQuantity(
+			makeActionEvent({ itemId: 'item-1', quantity: '0' }, 'b7f5c31c-6c16-4f91-bcab-35b67cc8cb9b')
+		);
+		const output = asActionFailureResult(result);
+
+		expect(output.status).toBe(400);
+		expect(output.data.message).toContain('Quantity must be at least 1');
+		expect(selectMock).not.toHaveBeenCalled();
+	});
+
+	it('removeItem rejects missing item id before DB query', async () => {
+		const actionEvent = {
+			request: buildFormRequest({ itemId: '' }),
+			locals: {
+				safeGetSession: vi.fn(async () => ({
+					user: { id: 'b7f5c31c-6c16-4f91-bcab-35b67cc8cb9b' }
+				}))
+			}
+		} as unknown as Parameters<NonNullable<typeof actions.removeItem>>[0];
+
+		const result = await actions.removeItem(actionEvent);
+		const output = asActionFailureResult(result);
+
+		expect(output.status).toBe(400);
+		expect(output.data.message).toContain('Cart item is required');
+		expect(selectMock).not.toHaveBeenCalled();
 	});
 });
