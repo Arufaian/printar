@@ -6,6 +6,7 @@
 		CarouselNext,
 		CarouselPrevious
 	} from '$lib/components/ui/carousel';
+	import { resolve } from '$app/paths';
 	import CatalogCard from './catalog-card.svelte';
 	import type { Product } from '$lib/types/product';
 	import type { EmblaOptionsType } from 'embla-carousel';
@@ -34,7 +35,19 @@
 		<CarouselContent class="-ml-3 md:-ml-4">
 			{#each products as product (product.id)}
 				<CarouselItem class="basis-full p-4 pl-3 md:basis-1/2 md:pl-4 lg:basis-1/3 xl:basis-1/4">
-					<CatalogCard {product} />
+					{#if product.categorySlug && product.productSlug}
+						<a
+							href={resolve('/(store)/categories/[categorySlug]/[productSlug]', {
+								categorySlug: product.categorySlug,
+								productSlug: product.productSlug
+							})}
+							class="block h-full"
+						>
+							<CatalogCard {product} />
+						</a>
+					{:else}
+						<CatalogCard {product} />
+					{/if}
 				</CarouselItem>
 			{/each}
 		</CarouselContent>

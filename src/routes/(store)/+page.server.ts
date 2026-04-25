@@ -1,7 +1,8 @@
-import { desc, inArray, isNull } from 'drizzle-orm';
+import { desc, eq, inArray, isNull } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
-import { products, variants } from '$lib/server/db/schema';
+import { categories, products, variants } from '$lib/server/db/schema';
+import { generateSlug } from '$lib/utils/string';
 
 const HOMEPAGE_PRODUCT_LIMIT = 6;
 
@@ -10,9 +11,12 @@ export const load: PageServerLoad = async () => {
 		.select({
 			id: products.id,
 			name: products.name,
-			description: products.description
+			description: products.description,
+			productSlug: products.slug,
+			categorySlug: categories.slug
 		})
 		.from(products)
+		.leftJoin(categories, eq(products.categoryId, categories.id))
 		.where(isNull(products.deletedAt))
 		.orderBy(desc(products.createdAt))
 		.limit(HOMEPAGE_PRODUCT_LIMIT);
@@ -50,12 +54,16 @@ export const load: PageServerLoad = async () => {
 
 	const latestProducts = latestProductRows.map((product) => {
 		const lowestVariant = lowestVariantByProductId.get(product.id);
+		const productSlug = (product.productSlug ?? '').trim() || generateSlug(product.name ?? '');
+		const categorySlug = (product.categorySlug ?? '').trim();
 
 		return {
 			id: product.id,
 			title: product.name ?? 'Produk tanpa nama',
 			description: product.description ?? '',
 			price: lowestVariant?.price ?? 0,
+			categorySlug: categorySlug || undefined,
+			productSlug: productSlug || undefined,
 			image:
 				lowestVariant?.imgUrl?.trim() ||
 				`https://picsum.photos/seed/${encodeURIComponent(product.id)}/500/500`
