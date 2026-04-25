@@ -40,7 +40,7 @@
 			},
 			{
 				title: 'Category',
-				url: '/admin/category',
+				url: '/admin/categories',
 				icon: LayoutGrid
 			},
 			{
