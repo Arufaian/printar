@@ -28,7 +28,7 @@
 				<enhanced:img
 					src={logo}
 					alt="logo"
-					class=" h-16 w-48 object-cover transition duration-300 hover:grayscale"
+					class="  w-32 object-cover transition duration-300 hover:grayscale"
 				/>
 			</figure>
 		</a>
@@ -71,17 +71,19 @@
 		</div>
 
 		<div class="flex shrink-0 items-center justify-end gap-2">
-			<Button variant="outline" class="relative ">
-				{#if cartCount > 0}
-					<Badge
-						class="absolute -top-1 -right-1 h-5 min-w-5 rounded-full px-1 font-mono tabular-nums"
-						variant="destructive"
-					>
-						{cartCount}
-					</Badge>
-				{/if}
-				<ShoppingCartIcon class="size-5 stroke-2" />
-			</Button>
+			<a href={resolve('/cart')}>
+				<Button variant="outline" class="relative ">
+					{#if cartCount > 0}
+						<Badge
+							class="absolute -top-1 -right-1 h-5 min-w-5 rounded-full px-1 font-mono tabular-nums"
+							variant="destructive"
+						>
+							{cartCount}
+						</Badge>
+					{/if}
+					<ShoppingCartIcon class="size-5 stroke-2" />
+				</Button>
+			</a>
 
 			<ThemeSwitch />
 
