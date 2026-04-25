@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { ArrowUpDown, ChevronDown, Funnel } from '@lucide/svelte/icons';
+	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import CatalogCard from '$lib/components/catalog-carousel/catalog-card.svelte';
 	import type { PageProps } from './$types';
@@ -10,6 +11,24 @@
 
 <div class="container mx-auto px-4 py-8 lg:px-8">
 	<div class="flex flex-col justify-between">
+		<div class="mb-6">
+			<Breadcrumb.Root aria-label="Breadcrumb">
+				<Breadcrumb.List>
+					<Breadcrumb.Item>
+						<Breadcrumb.Link href={resolve('/')}>Home</Breadcrumb.Link>
+					</Breadcrumb.Item>
+					<Breadcrumb.Separator />
+					<Breadcrumb.Item>
+						<Breadcrumb.Link href={resolve('/categories')}>Categories</Breadcrumb.Link>
+					</Breadcrumb.Item>
+					<Breadcrumb.Separator />
+					<Breadcrumb.Item>
+						<Breadcrumb.Page>{data.category.name}</Breadcrumb.Page>
+					</Breadcrumb.Item>
+				</Breadcrumb.List>
+			</Breadcrumb.Root>
+		</div>
+
 		<div class="mb-8">
 			<img
 				class="w-full rounded-md object-cover"

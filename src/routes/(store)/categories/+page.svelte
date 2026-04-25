@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { MoveRight } from '@lucide/svelte/icons';
 	import { resolve } from '$app/paths';
+	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -16,6 +17,20 @@
 
 <section class="mx-auto w-full">
 	<div class="container mx-auto px-4 py-8 lg:px-8">
+		<div class="mb-6">
+			<Breadcrumb.Root aria-label="Breadcrumb">
+				<Breadcrumb.List>
+					<Breadcrumb.Item>
+						<Breadcrumb.Link href={resolve('/')}>Home</Breadcrumb.Link>
+					</Breadcrumb.Item>
+					<Breadcrumb.Separator />
+					<Breadcrumb.Item>
+						<Breadcrumb.Page>Categories</Breadcrumb.Page>
+					</Breadcrumb.Item>
+				</Breadcrumb.List>
+			</Breadcrumb.Root>
+		</div>
+
 		<!-- Category Header -->
 		<div class="mb-8 flex flex-col items-end justify-between gap-4 md:flex-row lg:mb-10">
 			<div class="flex flex-col gap-1">

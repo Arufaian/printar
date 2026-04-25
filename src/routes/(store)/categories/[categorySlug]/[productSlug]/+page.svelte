@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { Minus, Plus } from '@lucide/svelte/icons';
+	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
 	import {
 		Carousel,
 		CarouselContent,
@@ -108,6 +109,34 @@
 </script>
 
 <main class="container mx-auto px-4 py-8 lg:px-8">
+	<div class="mb-6">
+		<Breadcrumb.Root aria-label="Breadcrumb">
+			<Breadcrumb.List>
+				<Breadcrumb.Item>
+					<Breadcrumb.Link href={resolve('/')}>Home</Breadcrumb.Link>
+				</Breadcrumb.Item>
+				<Breadcrumb.Separator />
+				<Breadcrumb.Item>
+					<Breadcrumb.Link href={resolve('/categories')}>Categories</Breadcrumb.Link>
+				</Breadcrumb.Item>
+				<Breadcrumb.Separator />
+				<Breadcrumb.Item>
+					<Breadcrumb.Link
+						href={resolve('/(store)/categories/[categorySlug]', {
+							categorySlug: data.category.slug
+						})}
+					>
+						{data.category.name}
+					</Breadcrumb.Link>
+				</Breadcrumb.Item>
+				<Breadcrumb.Separator />
+				<Breadcrumb.Item>
+					<Breadcrumb.Page>{data.product.name}</Breadcrumb.Page>
+				</Breadcrumb.Item>
+			</Breadcrumb.List>
+		</Breadcrumb.Root>
+	</div>
+
 	<div class="grid grid-cols-1 gap-8 lg:grid-cols-12">
 		<section class="lg:col-span-4">
 			<figure class="aspect-square w-full overflow-hidden rounded-md border bg-muted/20">
