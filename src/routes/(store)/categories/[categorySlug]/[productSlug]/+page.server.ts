@@ -1,11 +1,44 @@
-import { and, eq, inArray, isNull } from 'drizzle-orm';
-import { error } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
+import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
+import { error, fail } from '@sveltejs/kit';
+import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
-import { categories, optionGroups, options, products, variants } from '$lib/server/db/schema';
+import {
+	categories,
+	optionGroups,
+	options,
+	orderItemOptions,
+	orderItems,
+	orders,
+	products,
+	profiles,
+	variants
+} from '$lib/server/db/schema';
 import { generateSlug } from '$lib/utils/string';
 
-export const load: PageServerLoad = async ({ params }) => {
+const normalizeOptionIds = (formValues: FormDataEntryValue[]) => {
+	const optionIds = formValues
+		.filter((value): value is string => typeof value === 'string')
+		.map((value) => value.trim())
+		.filter((value) => value.length > 0);
+
+	return Array.from(new Set(optionIds)).sort();
+};
+
+const isSameOptionSet = (left: string[], right: string[]) => {
+	if (left.length !== right.length) return false;
+	return left.every((value, index) => value === right[index]);
+};
+
+class AddToCartError extends Error {
+	status: number;
+
+	constructor(status: number, message: string) {
+		super(message);
+		this.status = status;
+	}
+}
+
+const resolveProductByParams = async (params: { categorySlug: string; productSlug: string }) => {
 	const [categoryRow] = await db
 		.select({
 			id: categories.id,
@@ -17,7 +50,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		.limit(1);
 
 	if (!categoryRow) {
-		throw error(404, 'Kategori tidak ditemukan.');
+		return { categoryRow: null, productRow: null };
 	}
 
 	const categoryProductRows = await db
@@ -43,6 +76,19 @@ export const load: PageServerLoad = async ({ params }) => {
 		const generatedSlug = generateSlug(product.name ?? '');
 		return generatedSlug.length > 0 && generatedSlug === params.productSlug;
 	});
+
+	return {
+		categoryRow,
+		productRow: productRow ?? null
+	};
+};
+
+export const load: PageServerLoad = async ({ params }) => {
+	const { categoryRow, productRow } = await resolveProductByParams(params);
+
+	if (!categoryRow) {
+		throw error(404, 'Kategori tidak ditemukan.');
+	}
 
 	if (!productRow) {
 		throw error(404, 'Produk tidak ditemukan.');
@@ -154,4 +200,255 @@ export const load: PageServerLoad = async ({ params }) => {
 		gallery,
 		defaultVariantId: mappedVariants[0]?.id ?? null
 	};
+};
+
+export const actions: Actions = {
+	addToCart: async (event) => {
+		const { user } = await event.locals.safeGetSession();
+
+		if (!user) {
+			return fail(401, { message: 'Please sign in first to add items to cart.' });
+		}
+
+		const formData = await event.request.formData();
+		const variantId = String(formData.get('variantId') ?? '').trim();
+		const quantityRaw = Number(formData.get('quantity'));
+		const optionIds = normalizeOptionIds(formData.getAll('optionIds'));
+
+		console.log('[addToCart] payload', {
+			userId: user.id,
+			variantId,
+			quantity: quantityRaw,
+			optionIds
+		});
+
+		if (!variantId) {
+			return fail(400, { message: 'Variant is required.' });
+		}
+
+		if (!Number.isInteger(quantityRaw) || quantityRaw < 1) {
+			return fail(400, { message: 'Quantity must be at least 1.' });
+		}
+
+		const { productRow } = await resolveProductByParams(event.params);
+		if (!productRow) {
+			return fail(404, { message: 'Product not found.' });
+		}
+
+		const [profileRow] = await db
+			.select({ id: profiles.id })
+			.from(profiles)
+			.where(eq(profiles.id, user.id))
+			.limit(1);
+
+		if (!profileRow) {
+			return fail(403, { message: 'Profile not found for current user.' });
+		}
+
+		const [variantRow] = await db
+			.select({
+				id: variants.id,
+				productId: variants.productId,
+				price: variants.price,
+				stock: variants.stock
+			})
+			.from(variants)
+			.where(and(eq(variants.id, variantId), eq(variants.productId, productRow.id)))
+			.limit(1);
+
+		if (!variantRow) {
+			return fail(400, { message: 'Selected variant is invalid.' });
+		}
+
+		const variantStock = Number.isFinite(variantRow.stock) ? (variantRow.stock ?? 0) : 0;
+		if (variantStock <= 0) {
+			return fail(400, { message: 'Selected variant is out of stock.' });
+		}
+
+		if (quantityRaw > variantStock) {
+			return fail(400, { message: `Only ${variantStock} item(s) left in stock.` });
+		}
+
+		const optionGroupRows = await db
+			.select({ id: optionGroups.id })
+			.from(optionGroups)
+			.where(eq(optionGroups.productId, productRow.id));
+
+		const optionGroupIds = optionGroupRows.map((group) => group.id);
+		const validOptionRows =
+			optionIds.length === 0 || optionGroupIds.length === 0
+				? []
+				: await db
+						.select({
+							id: options.id,
+							additionalPrice: options.additionalPrice
+						})
+						.from(options)
+						.where(
+							and(inArray(options.id, optionIds), inArray(options.optionGroupId, optionGroupIds))
+						);
+
+		if (optionIds.length > 0 && validOptionRows.length !== optionIds.length) {
+			return fail(400, { message: 'One or more selected options are invalid.' });
+		}
+
+		const validOptionMap = new Map(
+			validOptionRows.map((option) => [option.id, option.additionalPrice ?? 0] as const)
+		);
+
+		try {
+			await db.transaction(async (tx) => {
+				const [existingDraftOrder] = await tx
+					.select({
+						id: orders.id
+					})
+					.from(orders)
+					.where(and(eq(orders.profileId, user.id), eq(orders.status, 'draft')))
+					.orderBy(desc(orders.createdAt))
+					.limit(1);
+
+				let draftOrderId = existingDraftOrder?.id;
+
+				if (!draftOrderId) {
+					const [createdDraftOrder] = await tx
+						.insert(orders)
+						.values({
+							profileId: user.id,
+							status: 'draft',
+							totalPrice: 0
+						})
+						.returning({ id: orders.id });
+
+					draftOrderId = createdDraftOrder.id;
+				}
+
+				const existingLineItems = await tx
+					.select({
+						id: orderItems.id,
+						quantity: orderItems.quantity
+					})
+					.from(orderItems)
+					.where(and(eq(orderItems.orderId, draftOrderId), eq(orderItems.variantId, variantId)));
+
+				const existingItemIds = existingLineItems
+					.map((item) => item.id)
+					.filter((itemId): itemId is string => Boolean(itemId));
+				const existingItemOptionRows =
+					existingItemIds.length > 0
+						? await tx
+								.select({
+									orderItemId: orderItemOptions.orderItemId,
+									optionId: orderItemOptions.optionId
+								})
+								.from(orderItemOptions)
+								.where(inArray(orderItemOptions.orderItemId, existingItemIds))
+						: [];
+
+				const optionIdsByOrderItemId = new Map<string, string[]>();
+				for (const row of existingItemOptionRows) {
+					if (!row.orderItemId || !row.optionId) continue;
+
+					const list = optionIdsByOrderItemId.get(row.orderItemId) ?? [];
+					list.push(row.optionId);
+					optionIdsByOrderItemId.set(row.orderItemId, list);
+				}
+
+				const normalizedIncomingOptionIds = [...optionIds].sort();
+
+				const matchingExistingItem = existingLineItems.find((item) => {
+					const normalizedExistingOptionIds = [
+						...(optionIdsByOrderItemId.get(item.id) ?? [])
+					].sort();
+					return isSameOptionSet(normalizedExistingOptionIds, normalizedIncomingOptionIds);
+				});
+
+				if (matchingExistingItem) {
+					const existingQuantity = matchingExistingItem.quantity ?? 0;
+					const nextQuantity = existingQuantity + quantityRaw;
+
+					if (nextQuantity > variantStock) {
+						throw new AddToCartError(400, `Only ${variantStock} item(s) left in stock.`);
+					}
+
+					await tx
+						.update(orderItems)
+						.set({
+							quantity: nextQuantity,
+							price: variantRow.price ?? 0
+						})
+						.where(eq(orderItems.id, matchingExistingItem.id));
+				} else {
+					const [createdItem] = await tx
+						.insert(orderItems)
+						.values({
+							orderId: draftOrderId,
+							variantId,
+							quantity: quantityRaw,
+							price: variantRow.price ?? 0
+						})
+						.returning({ id: orderItems.id });
+
+					if (optionIds.length > 0) {
+						await tx.insert(orderItemOptions).values(
+							optionIds.map((optionId) => ({
+								orderItemId: createdItem.id,
+								optionId,
+								price: validOptionMap.get(optionId) ?? 0
+							}))
+						);
+					}
+				}
+
+				const draftItems = await tx
+					.select({
+						id: orderItems.id,
+						quantity: orderItems.quantity,
+						price: orderItems.price
+					})
+					.from(orderItems)
+					.where(eq(orderItems.orderId, draftOrderId));
+
+				const draftItemIds = draftItems
+					.map((item) => item.id)
+					.filter((itemId): itemId is string => Boolean(itemId));
+				const draftItemOptions =
+					draftItemIds.length > 0
+						? await tx
+								.select({
+									orderItemId: orderItemOptions.orderItemId,
+									price: orderItemOptions.price
+								})
+								.from(orderItemOptions)
+								.where(inArray(orderItemOptions.orderItemId, draftItemIds))
+						: [];
+
+				const optionPriceByOrderItemId = new Map<string, number>();
+				for (const itemOption of draftItemOptions) {
+					if (!itemOption.orderItemId) continue;
+
+					const current = optionPriceByOrderItemId.get(itemOption.orderItemId) ?? 0;
+					optionPriceByOrderItemId.set(itemOption.orderItemId, current + (itemOption.price ?? 0));
+				}
+
+				const totalPrice = draftItems.reduce((total, item) => {
+					const unitPrice = (item.price ?? 0) + (optionPriceByOrderItemId.get(item.id) ?? 0);
+					return total + unitPrice * (item.quantity ?? 0);
+				}, 0);
+
+				await tx.update(orders).set({ totalPrice }).where(eq(orders.id, draftOrderId));
+			});
+		} catch (err) {
+			if (err instanceof AddToCartError) {
+				return fail(err.status, { message: err.message });
+			}
+
+			console.error('[addToCart] unexpected error', err);
+			return fail(500, { message: 'Failed to add item to cart. Please try again.' });
+		}
+
+		return {
+			type: 'success' as const,
+			text: 'Item added to cart.'
+		};
+	}
 };

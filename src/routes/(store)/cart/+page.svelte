@@ -9,6 +9,7 @@
 	import Minus from '@lucide/svelte/icons/minus';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
+	import type { PageProps } from './$types';
 
 	type CartItem = {
 		id: string;
@@ -21,42 +22,26 @@
 		stock: number;
 	};
 
-	let cartItems = $state<CartItem[]>([
-		{
-			id: 'item-1',
-			title: 'Business Card Premium',
-			variant: 'Art Carton 310gsm',
-			options: ['Laminasi Doff', 'Sudut Rounded'],
-			image: 'https://picsum.photos/seed/cart-1/120/120',
-			unitPrice: 85000,
-			quantity: 2,
-			stock: 8
-		},
-		{
-			id: 'item-2',
-			title: 'Brochure A4 Full Color',
-			variant: 'Glossy 150gsm',
-			options: ['Lipat 3'],
-			image: 'https://picsum.photos/seed/cart-2/120/120',
-			unitPrice: 120000,
-			quantity: 1,
-			stock: 12
-		},
-		{
-			id: 'item-3',
-			title: 'Sticker Vinyl Outdoor',
-			variant: '30x40 cm',
-			options: ['Laminasi Gloss'],
-			image: 'https://picsum.photos/seed/cart-3/120/120',
-			unitPrice: 60000,
-			quantity: 3,
-			stock: 20
-		}
-	]);
+	let { data }: PageProps = $props();
+
+	let cartItems = $state<CartItem[]>([]);
 
 	let selectedItemIds = $state<string[]>([]);
+	let shippingCost = $state(0);
+	let hasInitializedFromServer = $state(false);
 	let hasInitializedSelection = $state(false);
-	const shippingCost = 15000;
+
+	$effect(() => {
+		if (hasInitializedFromServer) return;
+		cartItems = [...data.cartItems];
+		shippingCost = data.summary.shippingCost;
+		hasInitializedFromServer = true;
+	});
+
+	const formatItemMeta = (item: CartItem) => {
+		if (item.options.length === 0) return item.variant;
+		return `${item.variant} • ${item.options.join(', ')}`;
+	};
 
 	$effect(() => {
 		if (hasInitializedSelection) return;
@@ -154,9 +139,7 @@
 
 							<Item.Content>
 								<Item.Title>{item.title}</Item.Title>
-								<Item.Description>
-									{item.variant} • {item.options.join(', ')}
-								</Item.Description>
+								<Item.Description>{formatItemMeta(item)}</Item.Description>
 								<Item.Description class="mt-1 text-foreground">
 									{formatCurrency(item.unitPrice)} / item
 								</Item.Description>
