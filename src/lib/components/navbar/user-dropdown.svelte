@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { User, Settings, PowerOff } from '@lucide/svelte/icons';
+	import { User, LogOut } from '@lucide/svelte/icons';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import * as Avatar from '$lib/components/ui/avatar/index.js';
 	import type { UserProfile } from '$lib/types/user-profile';
@@ -68,11 +68,6 @@
 			Profile
 		</DropdownMenu.Item>
 
-		<DropdownMenu.Item>
-			<Settings />
-			Setting
-		</DropdownMenu.Item>
-
 		<DropdownMenu.Separator />
 
 		<DropdownMenu.Item
@@ -87,7 +82,7 @@
 			{#if isLoading}
 				<Spinner />
 			{:else}
-				<PowerOff />
+				<LogOut />
 				logout
 			{/if}
 		</DropdownMenu.Item>

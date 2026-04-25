@@ -1,0 +1,284 @@
+<script lang="ts">
+	import { PUBLIC_BUCKET_NAME } from '$env/static/public';
+
+	import { Image } from '@lucide/svelte';
+	import { page } from '$app/state';
+	import { onDestroy } from 'svelte';
+	import { toast } from 'svelte-sonner';
+	import { Button } from '$lib/components/ui/button';
+	import * as Empty from '$lib/components/ui/empty/index.js';
+	import * as Form from '$lib/components/ui/form/index.js';
+	import { Input } from '$lib/components/ui/input';
+	import type { ProductSuperForm, ProductVariant } from '$lib/types/product-form';
+
+	const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024;
+
+	let {
+		form,
+		variant,
+		index,
+		canRemove,
+		onVariantChange,
+		onRemove,
+		onImageUploaded
+	}: {
+		form: ProductSuperForm;
+		variant: ProductVariant;
+		index: number;
+		canRemove: boolean;
+		onVariantChange: (nextVariant: ProductVariant) => void;
+		onRemove: () => void;
+		onImageUploaded?: (payload: { previousUrl?: string; nextUrl: string }) => void | Promise<void>;
+	} = $props();
+
+	let imageFileInput = $state<HTMLInputElement | null>(null);
+	let selectedFileName = $state('');
+	let localPreviewUrl = $state('');
+	let isUploading = $state(false);
+
+	const clearLocalPreview = () => {
+		if (!localPreviewUrl) return;
+		URL.revokeObjectURL(localPreviewUrl);
+		localPreviewUrl = '';
+	};
+
+	const openFilePicker = () => {
+		imageFileInput?.click();
+	};
+
+	const updateVariant = (patch: Partial<ProductVariant>) => {
+		// Reassign object agar parent menangkap perubahan secara reaktif.
+		onVariantChange({ ...variant, ...patch });
+	};
+
+	const createVariantFilePath = (fileName: string) => {
+		// Simpan file di folder variant agar struktur bucket tetap rapih.
+		const extension = fileName.split('.').pop()?.toLowerCase() ?? 'jpg';
+		return `product-variant/${crypto.randomUUID()}.${extension}`;
+	};
+
+	const handleVariantNameInput = (event: Event) => {
+		const target = event.currentTarget as HTMLInputElement;
+		updateVariant({ name: target.value });
+	};
+
+	const handleVariantPriceInput = (event: Event) => {
+		const target = event.currentTarget as HTMLInputElement;
+		if (target.value.trim() === '') {
+			updateVariant({ price: Number.NaN });
+			return;
+		}
+
+		const parsedValue = Number(target.value);
+		updateVariant({ price: Number.isNaN(parsedValue) ? Number.NaN : parsedValue });
+	};
+
+	const handleVariantStockInput = (event: Event) => {
+		const target = event.currentTarget as HTMLInputElement;
+		if (target.value.trim() === '') {
+			updateVariant({ stock: Number.NaN });
+			return;
+		}
+
+		const parsedValue = Number(target.value);
+		updateVariant({ stock: Number.isNaN(parsedValue) ? Number.NaN : parsedValue });
+	};
+
+	const handleFileChange = async (event: Event) => {
+		const input = event.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		const previousImageUrl = variant.img_url;
+		selectedFileName = file?.name ?? '';
+
+		clearLocalPreview();
+
+		if (!file) return;
+
+		if (!file.type.startsWith('image/')) {
+			toast.error('File harus berupa gambar.');
+			input.value = '';
+			return;
+		}
+
+		if (file.size > MAX_FILE_SIZE_BYTES) {
+			toast.error('Ukuran gambar maksimal 2MB.');
+			input.value = '';
+			return;
+		}
+
+		// Preview lokal ditampilkan lebih dulu agar user dapat feedback cepat.
+		localPreviewUrl = URL.createObjectURL(file);
+
+		const supabase = page.data.supabase;
+		if (!supabase) {
+			toast.error('Supabase client tidak tersedia.');
+			input.value = '';
+			return;
+		}
+
+		isUploading = true;
+
+		try {
+			const filePath = createVariantFilePath(file.name);
+
+			const { error: uploadError } = await supabase.storage
+				.from(PUBLIC_BUCKET_NAME)
+				.upload(filePath, file, {
+					upsert: false,
+					contentType: file.type
+				});
+
+			if (uploadError) {
+				throw uploadError;
+			}
+
+			// URL ini yang nanti disimpan ke form dan akan ikut ke server saat submit.
+			const { data } = supabase.storage.from(PUBLIC_BUCKET_NAME).getPublicUrl(filePath);
+			updateVariant({ img_url: data.publicUrl });
+			await onImageUploaded?.({
+				previousUrl: previousImageUrl,
+				nextUrl: data.publicUrl
+			});
+
+			toast.success('Gambar berhasil diupload.');
+		} catch (error) {
+			toast.error('Gagal upload gambar. Coba lagi.');
+			console.error(error);
+		} finally {
+			isUploading = false;
+			input.value = '';
+		}
+	};
+
+	$effect(() => {
+		if (!variant.img_url && localPreviewUrl) {
+			clearLocalPreview();
+			selectedFileName = '';
+			return;
+		}
+
+		if (variant.img_url && localPreviewUrl && localPreviewUrl !== variant.img_url) {
+			clearLocalPreview();
+		}
+	});
+
+	onDestroy(() => {
+		clearLocalPreview();
+	});
+</script>
+
+<div class="rounded-md border p-4">
+	<div class="mb-4 flex items-center justify-between gap-3">
+		<h3 class="text-sm font-medium">{variant.name ? variant.name : 'variant name'}</h3>
+		<Button type="button" variant="ghost" disabled={!canRemove} onclick={onRemove}>Hapus</Button>
+	</div>
+	<div class="grid gap-4 md:grid-cols-2">
+		<div class="col-span-2">
+			<input
+				id={`variant-image-file-${index}`}
+				class="hidden"
+				type="file"
+				accept="image/*"
+				bind:this={imageFileInput}
+				onchange={handleFileChange}
+			/>
+			<Empty.Root class="border border-dashed">
+				<Empty.Header>
+					{#if localPreviewUrl || variant.img_url}
+						<div class="mx-auto h-24 w-24 overflow-hidden rounded-md border">
+							<img
+								src={localPreviewUrl || variant.img_url}
+								alt="Preview gambar variant"
+								class="h-full w-full object-cover"
+							/>
+						</div>
+					{:else}
+						<Empty.Media variant="icon">
+							<Image />
+						</Empty.Media>
+						<Empty.Title>Belum ada gambar</Empty.Title>
+					{/if}
+					<Empty.Description>
+						{#if isUploading}
+							Mengunggah gambar...
+						{:else}
+							{selectedFileName || 'Upload gambar varian.'}
+						{/if}
+					</Empty.Description>
+				</Empty.Header>
+				<Empty.Content>
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						onclick={openFilePicker}
+						disabled={isUploading}
+					>
+						{isUploading ? 'Mengunggah...' : 'Pilih File'}
+					</Button>
+				</Empty.Content>
+			</Empty.Root>
+		</div>
+
+		<Form.Field {form} name={`variants[${index}].name`} class="md:col-span-2">
+			<Form.Control>
+				{#snippet children({ props })}
+					<Form.Label>Nama Varian</Form.Label>
+					<Input
+						{...props}
+						value={variant.name}
+						oninput={handleVariantNameInput}
+						placeholder="Hitam"
+					/>
+				{/snippet}
+			</Form.Control>
+			<Form.FieldErrors />
+		</Form.Field>
+		<Form.Field {form} name={`variants[${index}].price`}>
+			<Form.Control>
+				{#snippet children({ props })}
+					<Form.Label>Harga</Form.Label>
+					<Input
+						{...props}
+						type="number"
+						min={0}
+						value={Number.isFinite(variant.price) ? variant.price : ''}
+						oninput={handleVariantPriceInput}
+					/>
+				{/snippet}
+			</Form.Control>
+			<Form.FieldErrors />
+		</Form.Field>
+		<Form.Field {form} name={`variants[${index}].stock`}>
+			<Form.Control>
+				{#snippet children({ props })}
+					<Form.Label>Stok</Form.Label>
+					<Input
+						{...props}
+						type="number"
+						min={0}
+						value={Number.isFinite(variant.stock) ? variant.stock : ''}
+						oninput={handleVariantStockInput}
+					/>
+				{/snippet}
+			</Form.Control>
+			<Form.FieldErrors />
+		</Form.Field>
+
+		<Form.Field {form} name={`variants[${index}].img_url`} hidden class="md:col-span-2">
+			<Form.Control>
+				{#snippet children({ props })}
+					<Form.Label>Image URL (hasil upload)</Form.Label>
+					<Input
+						{...props}
+						type="url"
+						readonly
+						value={variant.img_url ?? ''}
+						placeholder="https://image.jpg"
+					/>
+				{/snippet}
+			</Form.Control>
+			<Form.FieldErrors />
+		</Form.Field>
+	</div>
+</div>

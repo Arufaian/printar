@@ -1,11 +1,17 @@
 <script lang="ts">
+	import { navigating } from '$app/state';
 	import AppSidebar from '$lib/components/app-sidebar.svelte';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
+	import { LoadingOverlay } from '$lib/components/ui/loading-overlay/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
 
 	let { data, children } = $props();
 </script>
+
+{#if navigating.to}
+	<LoadingOverlay />
+{/if}
 
 <svelte:head>
 	<title>Admin dashboard</title>
@@ -34,7 +40,7 @@
 					</Breadcrumb.Root>
 				</div>
 			</header>
-			<div class="flex flex-1 flex-col gap-4 p-4 pt-0">
+			<div class="flex min-w-0 flex-1 flex-col gap-4 p-4 pt-0">
 				{@render children()}
 			</div>
 		</Sidebar.Inset>

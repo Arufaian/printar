@@ -1,330 +1,327 @@
-<script>
-	import Breadcrumb from '$lib/components/ui/breadcrumb/breadcrumb.svelte';
-	import BreadcrumbList from '$lib/components/ui/breadcrumb/breadcrumb-list.svelte';
-	import BreadcrumbItem from '$lib/components/ui/breadcrumb/breadcrumb-item.svelte';
-	import BreadcrumbSeparator from '$lib/components/ui/breadcrumb/breadcrumb-separator.svelte';
-	import BreadcrumbLink from '$lib/components/ui/breadcrumb/breadcrumb-link.svelte';
-
-	import Separator from '$lib/components/ui/separator/separator.svelte';
+<script lang="ts">
+	import { resolve } from '$app/paths';
+	import { Minus, Plus } from '@lucide/svelte/icons';
+	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
+	import {
+		Carousel,
+		CarouselContent,
+		CarouselItem,
+		CarouselNext,
+		CarouselPrevious
+	} from '$lib/components/ui/carousel';
+	import { formatCurrency } from '$lib/utils/string.js';
 	import Button from '$lib/components/ui/button/button.svelte';
-
 	import Card from '$lib/components/ui/card/card.svelte';
-	import CardHeader from '$lib/components/ui/card/card-header.svelte';
 	import CardContent from '$lib/components/ui/card/card-content.svelte';
 	import CardFooter from '$lib/components/ui/card/card-footer.svelte';
+	import CardHeader from '$lib/components/ui/card/card-header.svelte';
 	import CardTitle from '$lib/components/ui/card/card-title.svelte';
+	import Separator from '$lib/components/ui/separator/separator.svelte';
+	import type { PageProps } from './$types';
 
-	import ButtonGroup from '$lib/components/ui/button-group/button-group.svelte';
+	let { data }: PageProps = $props();
 
-	import RadioGroup from '$lib/components/ui/radio-group/radio-group.svelte';
-	import RadioGroupItem from '$lib/components/ui/radio-group/radio-group-item.svelte';
-	import { Plus, Minus, Star } from '@lucide/svelte/icons';
+	let selectedVariantId = $state<string | null>(null);
+	let selectedImageIndex = $state(0);
+	let quantity = $state(1);
+	let selectedOptionIdsByGroup = $state<Record<string, string>>({});
+	let hasInitializedSelections = $state(false);
+
+	$effect(() => {
+		if (hasInitializedSelections) return;
+
+		selectedVariantId = data.defaultVariantId;
+		selectedOptionIdsByGroup = Object.fromEntries(
+			data.optionGroups
+				.map((group) => {
+					const firstOption = group.options[0];
+					if (!firstOption) return null;
+					return [group.id, firstOption.id] as const;
+				})
+				.filter((entry): entry is readonly [string, string] => Boolean(entry))
+		);
+
+		hasInitializedSelections = true;
+	});
+
+	const selectedVariant = $derived(
+		data.variants.find((variant) => variant.id === selectedVariantId) ?? data.variants[0] ?? null
+	);
+
+	const activeImage = $derived(data.gallery[selectedImageIndex] ?? data.gallery[0] ?? null);
+
+	const selectedOptionsAdditionalPrice = $derived(
+		data.optionGroups.reduce((total, group) => {
+			const selectedOptionId = selectedOptionIdsByGroup[group.id];
+			if (!selectedOptionId) return total;
+
+			const selectedOption = group.options.find((option) => option.id === selectedOptionId);
+			if (!selectedOption) return total;
+
+			return total + selectedOption.additionalPrice;
+		}, 0)
+	);
+
+	const unitPrice = $derived((selectedVariant?.price ?? 0) + selectedOptionsAdditionalPrice);
+	const subtotal = $derived(unitPrice * quantity);
+	const availableStock = $derived(selectedVariant?.stock ?? 0);
+
+	const selectVariant = (variantId: string) => {
+		selectedVariantId = variantId;
+
+		const imageIndex = data.gallery.findIndex((image) => image.variantId === variantId);
+		if (imageIndex >= 0) {
+			selectedImageIndex = imageIndex;
+		}
+
+		if (quantity > availableStock && availableStock > 0) {
+			quantity = availableStock;
+		}
+	};
+
+	const selectThumbnail = (index: number) => {
+		selectedImageIndex = index;
+		const relatedVariantId = data.gallery[index]?.variantId;
+		if (relatedVariantId) {
+			selectedVariantId = relatedVariantId;
+		}
+	};
+
+	const selectOption = (groupId: string, optionId: string) => {
+		selectedOptionIdsByGroup = {
+			...selectedOptionIdsByGroup,
+			[groupId]: optionId
+		};
+	};
+
+	const decreaseQuantity = () => {
+		quantity = Math.max(1, quantity - 1);
+	};
+
+	const increaseQuantity = () => {
+		if (availableStock <= 0) {
+			quantity += 1;
+			return;
+		}
+
+		quantity = Math.min(availableStock, quantity + 1);
+	};
 </script>
 
 <main class="container mx-auto px-4 py-8 lg:px-8">
-	<div class="flex flex-col">
-		<div class="mb-8">
-			<Breadcrumb>
-				<BreadcrumbList>
-					<BreadcrumbItem>
-						<BreadcrumbLink href="/">Home</BreadcrumbLink>
-					</BreadcrumbItem>
-					<BreadcrumbSeparator />
-					<BreadcrumbItem>
-						<BreadcrumbLink href="/components">Components</BreadcrumbLink>
-					</BreadcrumbItem>
-					<BreadcrumbSeparator />
-					<BreadcrumbItem>
-						<span class="text-sm text-primary md:text-base">Breadcrumb</span>
-					</BreadcrumbItem>
-				</BreadcrumbList>
-			</Breadcrumb>
-		</div>
+	<div class="mb-6">
+		<Breadcrumb.Root aria-label="Breadcrumb">
+			<Breadcrumb.List>
+				<Breadcrumb.Item>
+					<Breadcrumb.Link href={resolve('/')}>Home</Breadcrumb.Link>
+				</Breadcrumb.Item>
+				<Breadcrumb.Separator />
+				<Breadcrumb.Item>
+					<Breadcrumb.Link href={resolve('/categories')}>Categories</Breadcrumb.Link>
+				</Breadcrumb.Item>
+				<Breadcrumb.Separator />
+				<Breadcrumb.Item>
+					<Breadcrumb.Link
+						href={resolve('/(store)/categories/[categorySlug]', {
+							categorySlug: data.category.slug
+						})}
+					>
+						{data.category.name}
+					</Breadcrumb.Link>
+				</Breadcrumb.Item>
+				<Breadcrumb.Separator />
+				<Breadcrumb.Item>
+					<Breadcrumb.Page>{data.product.name}</Breadcrumb.Page>
+				</Breadcrumb.Item>
+			</Breadcrumb.List>
+		</Breadcrumb.Root>
+	</div>
 
-		<div class="mb-8">
-			<Separator />
-		</div>
+	<div class="grid grid-cols-1 gap-8 lg:grid-cols-12">
+		<section class="lg:col-span-4">
+			<figure class="aspect-square w-full overflow-hidden rounded-md border bg-muted/20">
+				<img
+					class="h-full w-full object-cover"
+					src={activeImage?.src}
+					alt={activeImage?.alt ?? data.product.name}
+				/>
+			</figure>
 
-		<div class="mb-8">
-			<div class="grid grid-cols-12 gap-8">
-				<!-- Product Image -->
-				<div class="col-span-4">
-					<div class="flex flex-col space-y-4">
-						<figure class="aspect-square w-full">
-							<img
-								class="w-full rounded-md object-cover"
-								src="https://picsum.photos/700/700"
-								alt="Product Name - gambar utama"
-							/>
-						</figure>
-						<div class="flex gap-3">
-							<button type="button" aria-label="Lihat gambar produk 1" class="flex-1">
-								<img
-									class="w-full rounded-md object-cover"
-									src="https://picsum.photos/200/200"
-									alt=""
-								/>
-							</button>
-
-							<button type="button" aria-label="Lihat gambar produk 2" class="flex-1">
-								<img
-									class="w-full rounded-md object-cover"
-									src="https://picsum.photos/200/200"
-									alt=""
-								/>
-							</button>
-
-							<button type="button" aria-label="Lihat gambar produk 3" class="flex-1">
-								<img
-									class="w-full rounded-md object-cover"
-									src="https://picsum.photos/200/200"
-									alt=""
-								/>
-							</button>
-
-							<button type="button" aria-label="Lihat gambar produk 4" class="flex-1">
-								<img
-									class="w-full rounded-md object-cover"
-									src="https://picsum.photos/200/200"
-									alt=""
-								/>
-							</button>
-						</div>
+			<div class="mt-4">
+				{#if data.gallery.length > 4}
+					<div class="relative">
+						<Carousel
+							opts={{ align: 'start', loop: false }}
+							class="w-full"
+							aria-label="Galeri produk"
+						>
+							<CarouselContent class="-ml-2">
+								{#each data.gallery as image, index (`${image.src}-${index}`)}
+									<CarouselItem class="basis-1/4 pl-2">
+										<button
+											type="button"
+											onclick={() => selectThumbnail(index)}
+											class={`aspect-square w-full overflow-hidden rounded-md border transition ${
+												selectedImageIndex === index
+													? 'border-primary ring-2 ring-primary/30'
+													: 'border-border hover:border-primary/60'
+											}`}
+										>
+											<img src={image.src} alt={image.alt} class="h-full w-full object-cover" />
+										</button>
+									</CarouselItem>
+								{/each}
+							</CarouselContent>
+							<CarouselPrevious class="-left-4" />
+							<CarouselNext class="-right-4" />
+						</Carousel>
 					</div>
+				{:else}
+					<div class="grid grid-cols-4 gap-3">
+						{#each data.gallery as image, index (`${image.src}-${index}`)}
+							<button
+								type="button"
+								onclick={() => selectThumbnail(index)}
+								class={`aspect-square overflow-hidden rounded-md border transition ${
+									selectedImageIndex === index
+										? 'border-primary ring-2 ring-primary/30'
+										: 'border-border hover:border-primary/60'
+								}`}
+							>
+								<img src={image.src} alt={image.alt} class="h-full w-full object-cover" />
+							</button>
+						{/each}
+					</div>
+				{/if}
+			</div>
+		</section>
+
+		<section class="lg:col-span-5">
+			<div class="space-y-6">
+				<div>
+					<p class="text-sm text-muted-foreground">{data.category.name}</p>
+					<h1 class="mt-1 text-2xl leading-tight font-semibold lg:text-3xl">
+						{data.product.name} - {selectedVariant.name}
+					</h1>
+					<p class="mt-3 text-3xl font-bold tracking-tight">{formatCurrency(unitPrice)}</p>
 				</div>
 
-				<!-- Product Details -->
-				<div class="col-span-5">
-					<div class="space-y-6">
-						<h1 class="text-2xl leading-tight font-semibold lg:text-3xl">
-							Product Name - product variant
-						</h1>
-						<div class="mt-2 flex items-center gap-3 text-sm text-muted-foreground">
-							<span>Terjual 50 rb+</span>
+				<Separator />
 
-							<div class="flex items-center gap-3">
-								<Star class="h-4 w-4" fill="yellow" />
-								<span class="text-sm font-medium text-foreground"
-									>4.5 <span class="text-muted-foreground">(100)</span></span
+				{#if data.variants.length > 0}
+					<section aria-labelledby="variant-heading">
+						<h2 id="variant-heading" class="mb-3 text-sm font-medium">Pilih varian</h2>
+						<div class="flex flex-wrap gap-2">
+							{#each data.variants as variant (variant.id)}
+								<button
+									type="button"
+									onclick={() => selectVariant(variant.id)}
+									class={`rounded-md border px-3 py-2 text-sm transition ${
+										selectedVariant?.id === variant.id
+											? 'border-primary bg-primary/10 text-primary'
+											: 'border-border hover:border-primary/50'
+									}`}
+								>
+									{variant.name}
+								</button>
+							{/each}
+						</div>
+					</section>
+				{/if}
+
+				{#if data.optionGroups.length > 0}
+					{#each data.optionGroups as group (group.id)}
+						<section aria-labelledby={`option-group-${group.id}`}>
+							<h2 id={`option-group-${group.id}`} class="mb-3 text-sm font-medium">{group.name}</h2>
+							<div class="flex flex-wrap gap-2">
+								{#each group.options as option (option.id)}
+									<button
+										type="button"
+										onclick={() => selectOption(group.id, option.id)}
+										class={`rounded-md border px-3 py-2 text-sm transition ${
+											selectedOptionIdsByGroup[group.id] === option.id
+												? 'border-primary bg-primary/10 text-primary'
+												: 'border-border hover:border-primary/50'
+										}`}
+									>
+										<span>{option.name}</span>
+										{#if option.additionalPrice > 0}
+											<span class="ml-2 text-xs text-muted-foreground"
+												>+ {formatCurrency(option.additionalPrice)}</span
+											>
+										{/if}
+									</button>
+								{/each}
+							</div>
+						</section>
+					{/each}
+				{/if}
+
+				<section aria-labelledby="description-heading">
+					<h2 id="description-heading" class="mb-3 text-sm font-medium">Deskripsi produk</h2>
+					<p class="text-sm leading-6 text-foreground">
+						{data.product.description || 'Belum ada deskripsi untuk produk ini.'}
+					</p>
+				</section>
+			</div>
+		</section>
+
+		<aside class="lg:col-span-3" aria-label="Ringkasan pembelian">
+			<Card>
+				<CardHeader>
+					<CardTitle>{data.product.name}</CardTitle>
+				</CardHeader>
+				<CardContent class="space-y-4">
+					{#if selectedVariant}
+						<div class="flex gap-3">
+							<div class="max-w-12 overflow-hidden rounded-md border">
+								<img
+									src={selectedVariant.imgUrl}
+									alt={selectedVariant.name}
+									class="h-12 w-12 object-cover"
+								/>
+							</div>
+							<div class="flex flex-col justify-center">
+								<span class="text-sm font-medium">{selectedVariant.name}</span>
+								<span class="text-xs text-muted-foreground"
+									>{formatCurrency(selectedVariant.price)}</span
 								>
 							</div>
 						</div>
+					{/if}
 
-						<div class="pt-1">
-							<span class="text-2xl font-bold tracking-tight">Rp. 19.990</span>
+					<Separator />
+
+					<div class="flex items-center justify-between gap-3">
+						<div class="flex items-center gap-2">
+							<Button variant="outline" size="icon" type="button" onclick={decreaseQuantity}>
+								<Minus />
+							</Button>
+							<span class="w-10 text-center text-sm font-medium">{quantity}</span>
+							<Button variant="outline" size="icon" type="button" onclick={increaseQuantity}>
+								<Plus />
+							</Button>
 						</div>
-
-						<Separator />
-
-						<!-- variant -->
-						<section aria-labelledby="product-variant-heading">
-							<div class="mb-3">
-								<h2 id="product-variant-heading" class="text-base leading-snug font-medium">
-									Pilih varian:
-								</h2>
-							</div>
-							<RadioGroup>
-								<div class="flex flex-wrap gap-4">
-									<div class="flex">
-										<RadioGroupItem value="variant1" id="variant1" class="peer hidden" />
-										<label
-											for="variant1"
-											class="flex cursor-pointer items-center rounded-md border bg-popover peer-data-checked:border-primary peer-data-checked:bg-accent hover:bg-accent"
-										>
-											<div class="flex items-center gap-2 p-2">
-												<div class="max-w-10">
-													<img
-														src="https://picsum.photos/200/200"
-														class="w-full rounded-md object-cover"
-														alt=""
-													/>
-												</div>
-
-												<span>varian 1</span>
-											</div>
-										</label>
-									</div>
-
-									<div class="flex">
-										<RadioGroupItem value="variant2" id="variant2" class="peer hidden" />
-										<label
-											for="variant2"
-											class="flex cursor-pointer items-center rounded-md border bg-popover peer-data-checked:border-primary peer-data-checked:bg-accent hover:bg-accent"
-										>
-											<div class="flex items-center gap-2 p-2">
-												<div class="max-w-10">
-													<img
-														src="https://picsum.photos/200/200"
-														class="w-full rounded-md object-cover"
-														alt=""
-													/>
-												</div>
-
-												<span>varian 2</span>
-											</div>
-										</label>
-									</div>
-								</div>
-							</RadioGroup>
-						</section>
-
-						<!-- options  -->
-						<section aria-labelledby="product-option-heading">
-							<div class="mb-3">
-								<h2 id="product-option-heading" class="text-base leading-snug font-medium">
-									Pilih opsi
-								</h2>
-							</div>
-							<RadioGroup>
-								<div class="flex flex-wrap gap-4">
-									<div class="flex">
-										<RadioGroupItem value="option1" id="option1" class="peer hidden" />
-										<label
-											for="option1"
-											class="flex cursor-pointer items-center rounded-md border bg-popover peer-data-checked:border-primary peer-data-checked:bg-accent hover:bg-accent"
-										>
-											<div class="flex items-center gap-2 p-2">
-												<div class="max-w-10">
-													<img
-														src="https://picsum.photos/200/200"
-														class="w-full rounded-md object-cover"
-														alt=""
-													/>
-												</div>
-
-												<span>option 1</span>
-											</div>
-										</label>
-									</div>
-
-									<div class="flex">
-										<RadioGroupItem value="option2" id="option2" class="peer hidden" />
-										<label
-											for="option2"
-											class="flex cursor-pointer items-center rounded-md border bg-popover peer-data-checked:border-primary peer-data-checked:bg-accent hover:bg-accent"
-										>
-											<div class="flex items-center gap-2 p-2">
-												<div class="max-w-10">
-													<img
-														src="https://picsum.photos/200/200"
-														class="w-full rounded-md object-cover"
-														alt=""
-													/>
-												</div>
-
-												<span>option 2</span>
-											</div>
-										</label>
-									</div>
-								</div>
-							</RadioGroup>
-						</section>
-
-						<!-- details -->
-						<section aria-labelledby="product-detail-heading">
-							<div class="mb-3">
-								<h2 id="product-detail-heading" class="text-base leading-snug font-medium">
-									Detail product
-								</h2>
-							</div>
-
-							<ul class="space-y-2">
-								<li>
-									<div class="flex items-center gap-2">
-										<span class="text-muted-foreground">Detail 1: </span>
-										<span>value</span>
-									</div>
-								</li>
-
-								<li>
-									<div class="flex items-center gap-2">
-										<span class="text-muted-foreground">Detail 2: </span>
-										<span>value</span>
-									</div>
-								</li>
-
-								<li>
-									<div class="flex items-center gap-2">
-										<span class="text-muted-foreground">Detail 3: </span>
-										<span>value</span>
-									</div>
-								</li>
-							</ul>
-						</section>
-
-						<section aria-labelledby="product-description-heading">
-							<div class="mb-3">
-								<h2 id="product-description-heading" class="text-base leading-snug font-medium">
-									Deskripsi product
-								</h2>
-							</div>
-							<p class="mb-4 text-sm leading-6 text-foreground">
-								Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptas ipsum consequatur,
-								voluptate quisquam deleniti cumque, dicta voluptatum, doloremque sed magnam.
-								Voluptas ipsum consequatur, voluptate quisquam deleniti cumque, dicta voluptatum,
-								doloremque sed magnam.
-							</p>
-
-							<p class="text-sm leading-6 text-foreground">
-								Lorem ipsum dolor, sit amet consectetur adipisicing elit. Eligendi, accusantium
-								mollitia dicta voluptatibus exercitationem necessitatibus voluptatum dolore in,
-								commodi neque deserunt, impedit vitae atque. Nobis nam ipsum porro magni tempora.
-							</p>
-						</section>
+						<div class="text-right">
+							<p class="text-xs text-muted-foreground">Stok</p>
+							<p class="text-sm font-medium">{availableStock}</p>
+						</div>
 					</div>
-				</div>
 
-				<!-- card action -->
-				<aside class="col-span-3" aria-label="Ringkasan pembelian">
-					<Card>
-						<CardHeader>
-							<CardTitle>Product Name</CardTitle>
-						</CardHeader>
-						<CardContent class="space-y-4">
-							<div class="flex gap-3">
-								<div class="max-w-12">
-									<img src="https://picsum.photos/200/200" alt="" />
-								</div>
-								<div class="flex items-center">
-									<span class="text-sm font-medium">Mug custom</span>
-								</div>
-							</div>
-
-							<Separator />
-
-							<div class="flex gap-3">
-								<div class="flex gap-3">
-									<ButtonGroup>
-										<Button variant="outline" size="icon">
-											<Minus />
-										</Button>
-										<Button variant="outline">...</Button>
-										<Button variant="outline" size="icon">
-											<Plus />
-										</Button>
-									</ButtonGroup>
-
-									<div class="flex items-center gap-2">
-										<span class="text-sm text-muted-foreground">Stok:</span>
-										<span class="text-sm font-medium text-foreground">10</span>
-									</div>
-								</div>
-							</div>
-
-							<div class="flex items-center justify-between">
-								<span class="text-sm text-muted-foreground">Subtotal</span>
-								<span class="text-base font-semibold text-foreground">$19.99</span>
-							</div>
-						</CardContent>
-						<CardFooter>
-							<div class="flex w-full flex-col gap-2">
-								<Button class="w-full">Checkout</Button>
-								<Button variant="outline" class="w-full">Beli langsung</Button>
-							</div>
-						</CardFooter>
-					</Card>
-				</aside>
-			</div>
-		</div>
+					<div class="flex items-center justify-between">
+						<span class="text-sm text-muted-foreground">Subtotal</span>
+						<span class="text-base font-semibold text-foreground">{formatCurrency(subtotal)}</span>
+					</div>
+				</CardContent>
+				<CardFooter>
+					<div class="flex w-full flex-col gap-2">
+						<Button class="w-full">Checkout</Button>
+						<Button variant="outline" class="w-full" href={resolve('/categories')}
+							>Kembali belanja</Button
+						>
+					</div>
+				</CardFooter>
+			</Card>
+		</aside>
 	</div>
 </main>

@@ -3,7 +3,7 @@ import { optionGroups } from './option-group';
 
 export const options = pgTable('options', {
 	id: uuid('id').primaryKey().defaultRandom(),
-	optionGroupId: uuid('option_group_id').references(() => optionGroups.id),
+	optionGroupId: uuid('option_group_id').references(() => optionGroups.id, { onDelete: 'cascade' }),
 	name: text('name'),
 	additionalPrice: integer('additional_price')
 });

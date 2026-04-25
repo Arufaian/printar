@@ -113,6 +113,27 @@
       "when": 1776414765333,
       "tag": "0015_salty_the_enforcers",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1776661055740,
+      "tag": "0016_mute_bloodaxe",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1776847571940,
+      "tag": "0017_nostalgic_captain_cross",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1776940017289,
+      "tag": "0018_lean_rockslide",
+      "breakpoints": true
     }
   ]
 }

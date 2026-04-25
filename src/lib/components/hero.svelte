@@ -1,26 +1,18 @@
 <script lang="ts">
-	import { Button } from '$lib/components/ui/button';
-	import { ArrowRightIcon } from '@lucide/svelte/icons';
 	import { fly } from 'svelte/transition';
 
 	let {
 		headline = 'Professional Digital Printing Services',
 		description = 'Transform your ideas into stunning prints. From business cards to large format banners, we deliver exceptional quality with fast turnaround times.',
-		ctaText = 'Browse category',
-		ctaHref = '#categories',
 		imageUrl = 'https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=800&h=600&fit=crop',
-		imageAlt = 'Digital printing products showcase',
-		onCtaClick
+		imageAlt = 'Digital printing products showcase'
 	}: Props = $props();
 
 	type Props = {
 		headline?: string;
 		description?: string;
-		ctaText?: string;
-		ctaHref?: string;
 		imageUrl?: string;
 		imageAlt?: string;
-		onCtaClick?: () => void;
 	};
 </script>
 
@@ -32,7 +24,7 @@
 				<div class="flex flex-col gap-4">
 					<h1
 						id="hero-heading"
-						class="bg-linear-to-br from-foreground to-foreground/70 bg-clip-text text-4xl font-bold tracking-tight text-transparent sm:text-5xl lg:text-6xl"
+						class="bg-linear-to-br from-foreground to-foreground/70 bg-clip-text py-2 text-4xl font-bold tracking-tight text-transparent sm:text-5xl lg:text-6xl"
 					>
 						{headline}
 					</h1>
@@ -41,18 +33,6 @@
 					>
 						{description}
 					</p>
-				</div>
-
-				<div class="flex flex-col gap-4 sm:flex-row">
-					<Button
-						size="lg"
-						class="shadow-lg-lg shadow-lg-primary/20 hover:shadow-lg-xl hover:shadow-lg-primary/30 px-8 text-base transition-all duration-300 hover:scale-[1.02]"
-						onclick={onCtaClick}
-						href={ctaHref}
-					>
-						{ctaText}
-						<ArrowRightIcon class="ml-2" />
-					</Button>
 				</div>
 			</div>
 

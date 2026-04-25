@@ -5,6 +5,8 @@ export interface Product {
 	description: string;
 	price: number;
 	image: string;
+	categorySlug?: string;
+	productSlug?: string;
 	category?: string;
 	rating?: number;
 	inStock?: boolean;

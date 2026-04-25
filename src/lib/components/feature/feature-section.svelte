@@ -7,20 +7,21 @@
 	const features: Feature[] = [
 		{
 			icon: ZapIcon,
-			title: 'Lightning Fast',
-			description: 'Built with performance in mind.'
+			title: 'Proses Cepat, Tetap Presisi',
+			description:
+				'Order diproses efisien tanpa mengorbankan detail, jadi campaign kamu bisa jalan tepat waktu.'
 		},
 		{
 			icon: ShieldIcon,
-			title: 'Secure by Default',
+			title: 'Kualitas Cetak Premium',
 			description:
-				'Enterprise-grade security features to keep your data safe and protected at all times.'
+				'Warna akurat, hasil tajam, dan finishing rapi untuk tampilan brand yang lebih profesional.'
 		},
 		{
 			icon: RocketIcon,
-			title: 'Easy to Deploy',
+			title: 'Mudah Dipesan, Nyaman Dipantau',
 			description:
-				'Deploy your application in minutes with our streamlined deployment process and tools.'
+				'Dari pilih produk sampai finalisasi, alurnya simpel dan tim kami siap bantu kapan pun dibutuhkan.'
 		}
 	];
 
