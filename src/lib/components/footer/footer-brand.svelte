@@ -1,16 +1,17 @@
 <script lang="ts">
-	import { PrinterIcon } from '@lucide/svelte/icons';
 	import { resolve } from '$app/paths';
+	import logo from '$lib/assets/logo.png';
 </script>
 
 <div class="flex flex-col gap-4">
 	<a href={resolve('/')} class="group flex items-center gap-2" aria-label="PrintHub Home">
-		<div
-			class="flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-transform group-hover:scale-105"
-		>
-			<PrinterIcon class="size-6" />
-		</div>
-		<span class="text-xl font-bold">PrintHub</span>
+		<figure class="flex w-full items-center">
+			<enhanced:img
+				src={logo}
+				alt="logo"
+				class="  w-32 object-cover transition duration-300 hover:grayscale"
+			/>
+		</figure>
 	</a>
 	<p class="text-sm font-medium text-muted-foreground">Professional Digital Printing Solutions</p>
 	<p class="max-w-xs text-sm text-muted-foreground">

@@ -317,7 +317,7 @@
 					<div class="flex w-full flex-col gap-2">
 						<Button class="w-full">Checkout</Button>
 						<Button variant="outline" class="w-full" href={resolve('/categories')}
-							>Kembali belanja</Button
+							>Tambahkan ke keranjang</Button
 						>
 					</div>
 				</CardFooter>
