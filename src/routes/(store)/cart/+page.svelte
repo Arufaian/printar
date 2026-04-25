@@ -1,0 +1,238 @@
+<script lang="ts">
+	import { resolve } from '$app/paths';
+	import Separator from '$lib/components/ui/separator/separator.svelte';
+	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
+	import { Label } from '$lib/components/ui/label/index.js';
+	import * as Item from '$lib/components/ui/item/index.js';
+	import { Button } from '$lib/components/ui/button/index.js';
+	import { formatCurrency } from '$lib/utils/string.js';
+	import Minus from '@lucide/svelte/icons/minus';
+	import Plus from '@lucide/svelte/icons/plus';
+	import Trash2 from '@lucide/svelte/icons/trash-2';
+
+	type CartItem = {
+		id: string;
+		title: string;
+		variant: string;
+		options: string[];
+		image: string;
+		unitPrice: number;
+		quantity: number;
+		stock: number;
+	};
+
+	let cartItems = $state<CartItem[]>([
+		{
+			id: 'item-1',
+			title: 'Business Card Premium',
+			variant: 'Art Carton 310gsm',
+			options: ['Laminasi Doff', 'Sudut Rounded'],
+			image: 'https://picsum.photos/seed/cart-1/120/120',
+			unitPrice: 85000,
+			quantity: 2,
+			stock: 8
+		},
+		{
+			id: 'item-2',
+			title: 'Brochure A4 Full Color',
+			variant: 'Glossy 150gsm',
+			options: ['Lipat 3'],
+			image: 'https://picsum.photos/seed/cart-2/120/120',
+			unitPrice: 120000,
+			quantity: 1,
+			stock: 12
+		},
+		{
+			id: 'item-3',
+			title: 'Sticker Vinyl Outdoor',
+			variant: '30x40 cm',
+			options: ['Laminasi Gloss'],
+			image: 'https://picsum.photos/seed/cart-3/120/120',
+			unitPrice: 60000,
+			quantity: 3,
+			stock: 20
+		}
+	]);
+
+	let selectedItemIds = $state<string[]>([]);
+	let hasInitializedSelection = $state(false);
+	const shippingCost = 15000;
+
+	$effect(() => {
+		if (hasInitializedSelection) return;
+		selectedItemIds = cartItems.map((item) => item.id);
+		hasInitializedSelection = true;
+	});
+
+	const isAllSelected = $derived(
+		cartItems.length > 0 && cartItems.every((item) => selectedItemIds.includes(item.id))
+	);
+
+	const selectedItems = $derived(cartItems.filter((item) => selectedItemIds.includes(item.id)));
+	const selectedCount = $derived(selectedItems.length);
+	const selectedSubtotal = $derived(
+		selectedItems.reduce((total, item) => total + item.unitPrice * item.quantity, 0)
+	);
+	const grandTotal = $derived(selectedSubtotal + (selectedCount > 0 ? shippingCost : 0));
+
+	const toggleSelectAll = (checked: boolean) => {
+		selectedItemIds = checked ? cartItems.map((item) => item.id) : [];
+	};
+
+	const toggleSelectItem = (itemId: string, checked: boolean) => {
+		if (checked) {
+			if (!selectedItemIds.includes(itemId)) {
+				selectedItemIds = [...selectedItemIds, itemId];
+			}
+			return;
+		}
+
+		selectedItemIds = selectedItemIds.filter((id) => id !== itemId);
+	};
+
+	const updateItemQuantity = (itemId: string, nextQuantity: number) => {
+		cartItems = cartItems.map((item) => {
+			if (item.id !== itemId) return item;
+
+			const clamped = Math.max(1, Math.min(nextQuantity, item.stock));
+			return { ...item, quantity: clamped };
+		});
+	};
+
+	const removeItem = (itemId: string) => {
+		cartItems = cartItems.filter((item) => item.id !== itemId);
+		selectedItemIds = selectedItemIds.filter((id) => id !== itemId);
+	};
+</script>
+
+<div class="container mx-auto px-4 py-8 lg:px-8">
+	{#if cartItems.length === 0}
+		<div class="mx-auto max-w-xl rounded-xl border border-dashed bg-card p-10 text-center">
+			<h1 class="text-2xl font-semibold">Your cart is empty</h1>
+			<p class="mt-3 text-sm text-muted-foreground">
+				Looks like you have not added any product yet. Start exploring our categories.
+			</p>
+			<Button class="mt-6" href={resolve('/categories')}>Continue Shopping</Button>
+		</div>
+	{:else}
+		<div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
+			<div class="rounded-xl bg-card shadow lg:col-span-8">
+				<div class="p-4 md:p-6">
+					<h1 class="text-xl font-semibold md:text-2xl">Shopping Cart</h1>
+					<p class="mt-1 text-sm text-muted-foreground">
+						{cartItems.length} item{cartItems.length > 1 ? 's' : ''} in your cart
+					</p>
+				</div>
+
+				<Separator />
+
+				<div class="flex items-center gap-2 p-4 md:px-6">
+					<Checkbox
+						id="select-all-cart-items"
+						checked={isAllSelected}
+						onCheckedChange={(checked) => toggleSelectAll(Boolean(checked))}
+					/>
+					<Label for="select-all-cart-items">Select all</Label>
+				</div>
+
+				<Separator />
+
+				<div class="space-y-3 p-4 md:p-6">
+					{#each cartItems as item (item.id)}
+						<Item.Root variant="outline">
+							<Checkbox
+								id={`select-${item.id}`}
+								checked={selectedItemIds.includes(item.id)}
+								onCheckedChange={(checked) => toggleSelectItem(item.id, Boolean(checked))}
+							/>
+
+							<Item.Media>
+								<figure class="w-full">
+									<img class="max-w-14 rounded-xl object-cover" src={item.image} alt={item.title} />
+								</figure>
+							</Item.Media>
+
+							<Item.Content>
+								<Item.Title>{item.title}</Item.Title>
+								<Item.Description>
+									{item.variant} • {item.options.join(', ')}
+								</Item.Description>
+								<Item.Description class="mt-1 text-foreground">
+									{formatCurrency(item.unitPrice)} / item
+								</Item.Description>
+							</Item.Content>
+
+							<Item.Actions class="items-center gap-2">
+								<div class="flex items-center gap-1">
+									<Button
+										size="icon-sm"
+										variant="outline"
+										aria-label={`Decrease quantity for ${item.title}`}
+										onclick={() => updateItemQuantity(item.id, item.quantity - 1)}
+									>
+										<Minus />
+									</Button>
+									<span class="w-8 text-center text-sm font-medium">{item.quantity}</span>
+									<Button
+										size="icon-sm"
+										variant="outline"
+										aria-label={`Increase quantity for ${item.title}`}
+										onclick={() => updateItemQuantity(item.id, item.quantity + 1)}
+									>
+										<Plus />
+									</Button>
+								</div>
+								<div class="min-w-28 text-right">
+									<p class="text-sm font-semibold">
+										{formatCurrency(item.unitPrice * item.quantity)}
+									</p>
+									<p class="text-xs text-muted-foreground">Stock: {item.stock}</p>
+								</div>
+								<Button
+									size="icon-sm"
+									variant="ghost"
+									aria-label={`Remove ${item.title} from cart`}
+									onclick={() => removeItem(item.id)}
+								>
+									<Trash2 />
+								</Button>
+							</Item.Actions>
+						</Item.Root>
+					{/each}
+				</div>
+			</div>
+
+			<aside
+				class="rounded-xl bg-card p-4 shadow lg:sticky lg:top-24 lg:col-span-4 lg:h-fit lg:p-6"
+			>
+				<h2 class="text-lg font-semibold">Order Summary</h2>
+				<p class="mt-1 text-sm text-muted-foreground">
+					{selectedCount} item{selectedCount > 1 ? 's' : ''} selected
+				</p>
+
+				<div class="mt-5 space-y-3 text-sm">
+					<div class="flex items-center justify-between">
+						<span class="text-muted-foreground">Subtotal</span>
+						<span>{formatCurrency(selectedSubtotal)}</span>
+					</div>
+					<div class="flex items-center justify-between">
+						<span class="text-muted-foreground">Shipping</span>
+						<span>{selectedCount > 0 ? formatCurrency(shippingCost) : formatCurrency(0)}</span>
+					</div>
+				</div>
+
+				<Separator class="my-4" />
+
+				<div class="flex items-center justify-between">
+					<span class="font-medium">Total</span>
+					<span class="text-lg font-semibold">{formatCurrency(grandTotal)}</span>
+				</div>
+
+				<Button class="mt-5 w-full" disabled={selectedCount === 0}>Proceed to Checkout</Button>
+				<Button variant="outline" class="mt-2 w-full" href={resolve('/categories')}
+					>Continue Shopping</Button
+				>
+			</aside>
+		</div>
+	{/if}
+</div>
