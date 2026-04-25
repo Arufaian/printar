@@ -10,35 +10,25 @@
 	import Minus from '@lucide/svelte/icons/minus';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
+	import type { CartItemData } from '$lib/types/cart';
 	import type { PageProps } from './$types';
 	import { toast } from 'svelte-sonner';
 
-	type CartItem = {
-		id: string;
-		title: string;
-		variant: string;
-		options: string[];
-		image: string;
-		unitPrice: number;
-		quantity: number;
-		stock: number;
-	};
-
 	let { data }: PageProps = $props();
 
-	let cartItems = $state<CartItem[]>([]);
+	let cartItems = $state<CartItemData[]>([]);
 
 	let selectedItemIds = $state<string[]>([]);
 	let shippingCost = $state(0);
 
 	$effect(() => {
-		const nextItems = data.cartItems;
+		const nextItems: CartItemData[] = data.cartItems;
 		cartItems = [...nextItems];
 		shippingCost = data.summary.shippingCost;
 		selectedItemIds = nextItems.map((item) => item.id);
 	});
 
-	const formatItemMeta = (item: CartItem) => {
+	const formatItemMeta = (item: CartItemData) => {
 		if (item.options.length === 0) return item.variant;
 		return `${item.variant} • ${item.options.join(', ')}`;
 	};
@@ -69,7 +59,7 @@
 		selectedItemIds = selectedItemIds.filter((id) => id !== itemId);
 	};
 
-	const getNextQuantity = (item: CartItem, delta: number) => {
+	const getNextQuantity = (item: CartItemData, delta: number) => {
 		const rawNext = item.quantity + delta;
 		const upperBound = item.stock > 0 ? item.stock : Number.MAX_SAFE_INTEGER;
 		return Math.max(1, Math.min(rawNext, upperBound));
