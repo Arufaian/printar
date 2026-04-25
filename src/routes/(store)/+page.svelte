@@ -2,7 +2,9 @@
 	import CatalogCarouselSection from '$lib/components/catalog-carousel/catalog-carousel-section.svelte';
 	import FeatureSection from '$lib/components/feature/feature-section.svelte';
 	import Hero from '$lib/components/hero.svelte';
-	import { products } from '$lib/mockup-data/product';
+	import type { PageProps } from './$types';
+
+	let { data }: PageProps = $props();
 </script>
 
 <svelte:head>
@@ -13,5 +15,9 @@
 	<Hero />
 	<FeatureSection title="Kenapa memilih kami" />
 
-	<CatalogCarouselSection title="Produk terbaru" route="/categories" {products} />
+	<CatalogCarouselSection
+		title="Produk terbaru"
+		route="/categories"
+		products={data.latestProducts}
+	/>
 </main>

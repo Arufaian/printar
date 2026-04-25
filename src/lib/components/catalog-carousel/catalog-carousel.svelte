@@ -33,7 +33,7 @@
 	<Carousel opts={defaultOptions} class="w-full" aria-label={ariaLabel}>
 		<CarouselContent class="-ml-3 md:-ml-4">
 			{#each products as product (product.id)}
-				<CarouselItem class="basis-full pl-3 md:basis-1/2 md:pl-4 lg:basis-1/3 xl:basis-1/4">
+				<CarouselItem class="basis-full p-4 pl-3 md:basis-1/2 md:pl-4 lg:basis-1/3 xl:basis-1/4">
 					<CatalogCard {product} />
 				</CarouselItem>
 			{/each}
