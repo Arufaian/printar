@@ -9,6 +9,7 @@
 	let { children, data } = $props();
 
 	let userProfile = $derived(data.profile);
+	let cartCount = $derived(data.cartCount ?? 0);
 
 	let isPhone = $state(false);
 
@@ -19,7 +20,7 @@
 
 <div>
 	<!-- <Navbar /> -->
-	<Navbar {userProfile} />
+	<Navbar {userProfile} {cartCount} />
 
 	{@render children()}
 
