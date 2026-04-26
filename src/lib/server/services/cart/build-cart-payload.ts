@@ -1,4 +1,4 @@
-import { eq, inArray } from 'drizzle-orm';
+import { asc, eq, inArray } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { orderItemOptions, orderItems, options, products, variants } from '$lib/server/db/schema';
 import type { CartItemData, CartPayload } from '$lib/types/cart';
@@ -32,7 +32,8 @@ export async function buildCartPayload(userId: string): Promise<CartPayload> {
 		.from(orderItems)
 		.leftJoin(variants, eq(orderItems.variantId, variants.id))
 		.leftJoin(products, eq(variants.productId, products.id))
-		.where(eq(orderItems.orderId, draftOrder.id));
+		.where(eq(orderItems.orderId, draftOrder.id))
+		.orderBy(asc(orderItems.id));
 
 	const itemIds = itemRows.map((item) => item.id).filter((id): id is string => Boolean(id));
 

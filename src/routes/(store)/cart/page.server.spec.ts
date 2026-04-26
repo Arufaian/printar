@@ -72,7 +72,9 @@ const mockOrderItemsQuery = (rows: Array<Record<string, unknown>>) => {
 		from: vi.fn(() => ({
 			leftJoin: vi.fn(() => ({
 				leftJoin: vi.fn(() => ({
-					where: vi.fn(async () => rows)
+					where: vi.fn(() => ({
+						orderBy: vi.fn(async () => rows)
+					}))
 				}))
 			}))
 		}))
