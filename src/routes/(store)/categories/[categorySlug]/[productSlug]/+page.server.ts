@@ -48,13 +48,6 @@ export const actions: Actions = {
 		const quantityRaw = Number(formData.get('quantity'));
 		const optionIds = normalizeOptionIds(formData.getAll('optionIds'));
 
-		console.log('[addToCart] payload', {
-			userId: user.id,
-			variantId,
-			quantity: quantityRaw,
-			optionIds
-		});
-
 		if (!variantId) {
 			return fail(400, { message: 'Variant is required.' });
 		}
