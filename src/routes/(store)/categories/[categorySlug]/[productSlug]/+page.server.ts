@@ -1,157 +1,155 @@
-import { and, eq, inArray, isNull } from 'drizzle-orm';
-import { error } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
+import { and, eq, inArray } from 'drizzle-orm';
+import { error, fail } from '@sveltejs/kit';
+import type { Actions } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { categories, optionGroups, options, products, variants } from '$lib/server/db/schema';
-import { generateSlug } from '$lib/utils/string';
+import { optionGroups, options, profiles, variants } from '$lib/server/db/schema';
+import { CartActionError, addItemToDraftCart } from '$lib/server/services/cart';
+import {
+	StoreCategoryNotFoundError,
+	StoreProductNotFoundError,
+	buildStoreProductDetailPayload,
+	normalizeOptionIds,
+	resolveStoreProductByParams
+} from '$lib/server/services/store-product';
 
-export const load: PageServerLoad = async ({ params }) => {
-	const [categoryRow] = await db
-		.select({
-			id: categories.id,
-			name: categories.name,
-			slug: categories.slug
-		})
-		.from(categories)
-		.where(eq(categories.slug, params.categorySlug))
-		.limit(1);
-
-	if (!categoryRow) {
-		throw error(404, 'Kategori tidak ditemukan.');
-	}
-
-	const categoryProductRows = await db
-		.select({
-			id: products.id,
-			name: products.name,
-			slug: products.slug,
-			description: products.description
-		})
-		.from(products)
-		.where(and(eq(products.categoryId, categoryRow.id), isNull(products.deletedAt)));
-
-	const productRow = categoryProductRows.find((product) => {
-		const normalizedSlug = (product.slug ?? '').trim();
-		if (normalizedSlug && normalizedSlug === params.productSlug) {
-			return true;
-		}
-
-		if (product.id === params.productSlug) {
-			return true;
-		}
-
-		const generatedSlug = generateSlug(product.name ?? '');
-		return generatedSlug.length > 0 && generatedSlug === params.productSlug;
-	});
-
-	if (!productRow) {
-		throw error(404, 'Produk tidak ditemukan.');
-	}
-
-	const variantRows = await db
-		.select({
-			id: variants.id,
-			name: variants.name,
-			price: variants.price,
-			stock: variants.stock,
-			imgUrl: variants.imgUrl
-		})
-		.from(variants)
-		.where(eq(variants.productId, productRow.id));
-
-	const mappedVariants = variantRows.map((variant) => ({
-		id: variant.id,
-		name: variant.name?.trim() || 'Varian',
-		price: typeof variant.price === 'number' && Number.isFinite(variant.price) ? variant.price : 0,
-		stock: typeof variant.stock === 'number' && Number.isFinite(variant.stock) ? variant.stock : 0,
-		imgUrl:
-			variant.imgUrl?.trim() ||
-			`https://picsum.photos/seed/variant-${encodeURIComponent(variant.id)}/700/700`
-	}));
-
-	const optionGroupRows = await db
-		.select({
-			id: optionGroups.id,
-			name: optionGroups.name
-		})
-		.from(optionGroups)
-		.where(eq(optionGroups.productId, productRow.id));
-
-	const optionGroupIds = optionGroupRows.map((group) => group.id);
-	const optionRows =
-		optionGroupIds.length > 0
-			? await db
-					.select({
-						id: options.id,
-						name: options.name,
-						additionalPrice: options.additionalPrice,
-						optionGroupId: options.optionGroupId
-					})
-					.from(options)
-					.where(inArray(options.optionGroupId, optionGroupIds))
-			: [];
-
-	const optionsByGroupId = new Map<
-		string,
-		Array<{ id: string; name: string; additionalPrice: number }>
-	>();
-
-	for (const option of optionRows) {
-		if (!option.optionGroupId) continue;
-
-		const groupOptions = optionsByGroupId.get(option.optionGroupId) ?? [];
-		groupOptions.push({
-			id: option.id,
-			name: option.name?.trim() || 'Opsi',
-			additionalPrice:
-				typeof option.additionalPrice === 'number' && Number.isFinite(option.additionalPrice)
-					? option.additionalPrice
-					: 0
-		});
-		optionsByGroupId.set(option.optionGroupId, groupOptions);
-	}
-
-	const mappedOptionGroups = optionGroupRows
-		.map((group) => ({
-			id: group.id,
-			name: group.name?.trim() || 'Pilihan',
-			options: optionsByGroupId.get(group.id) ?? []
-		}))
-		.filter((group) => group.options.length > 0);
-
-	const gallery: Array<{ variantId: string | null; src: string; alt: string }> = mappedVariants.map(
-		(variant) => ({
-			variantId: variant.id,
-			src: variant.imgUrl,
-			alt: `${productRow.name ?? 'Produk'} - ${variant.name}`
-		})
-	);
-
-	if (gallery.length === 0) {
-		gallery.push({
-			variantId: null,
-			src: `https://picsum.photos/seed/product-${encodeURIComponent(productRow.id)}/700/700`,
-			alt: productRow.name ?? 'Produk'
-		});
-	}
-
-	const normalizedProductSlug =
-		(productRow.slug ?? '').trim() || generateSlug(productRow.name ?? '') || productRow.id;
-
-	return {
-		category: {
-			name: categoryRow.name ?? 'Kategori',
-			slug: categoryRow.slug ?? params.categorySlug
-		},
-		product: {
-			id: productRow.id,
-			slug: normalizedProductSlug,
-			name: productRow.name ?? 'Produk tanpa nama',
-			description: productRow.description ?? ''
-		},
-		variants: mappedVariants,
-		optionGroups: mappedOptionGroups,
-		gallery,
-		defaultVariantId: mappedVariants[0]?.id ?? null
+export const load = async (
+	event: Parameters<NonNullable<import('./$types').PageServerLoad>>[0]
+) => {
+	const params = {
+		categorySlug: event.params.categorySlug ?? '',
+		productSlug: event.params.productSlug ?? ''
 	};
+
+	try {
+		return await buildStoreProductDetailPayload(params);
+	} catch (err) {
+		if (err instanceof StoreCategoryNotFoundError) {
+			throw error(404, err.message);
+		}
+
+		if (err instanceof StoreProductNotFoundError) {
+			throw error(404, err.message);
+		}
+
+		throw err;
+	}
+};
+
+export const actions: Actions = {
+	addToCart: async (event) => {
+		const { user } = await event.locals.safeGetSession();
+
+		if (!user) {
+			return fail(401, {
+				message: 'Silakan login terlebih dahulu untuk menambahkan item ke keranjang.'
+			});
+		}
+
+		const formData = await event.request.formData();
+		const variantId = String(formData.get('variantId') ?? '').trim();
+		const quantityRaw = Number(formData.get('quantity'));
+		const optionIds = normalizeOptionIds(formData.getAll('optionIds'));
+
+		if (!variantId) {
+			return fail(400, { message: 'Varian wajib dipilih.' });
+		}
+
+		if (!Number.isInteger(quantityRaw) || quantityRaw < 1) {
+			return fail(400, { message: 'Jumlah minimal 1.' });
+		}
+
+		const params = {
+			categorySlug: event.params.categorySlug ?? '',
+			productSlug: event.params.productSlug ?? ''
+		};
+
+		const { productRow } = await resolveStoreProductByParams(params);
+		if (!productRow) {
+			return fail(404, { message: 'Produk tidak ditemukan.' });
+		}
+
+		const [profileRow] = await db
+			.select({ id: profiles.id })
+			.from(profiles)
+			.where(eq(profiles.id, user.id))
+			.limit(1);
+
+		if (!profileRow) {
+			return fail(403, { message: 'Profil pengguna tidak ditemukan.' });
+		}
+
+		const [variantRow] = await db
+			.select({
+				id: variants.id,
+				price: variants.price,
+				stock: variants.stock
+			})
+			.from(variants)
+			.where(and(eq(variants.id, variantId), eq(variants.productId, productRow.id)))
+			.limit(1);
+
+		if (!variantRow) {
+			return fail(400, { message: 'Varian yang dipilih tidak valid.' });
+		}
+
+		const variantStock = Number.isFinite(variantRow.stock) ? (variantRow.stock ?? 0) : 0;
+		if (variantStock <= 0) {
+			return fail(400, { message: 'Varian yang dipilih sedang habis.' });
+		}
+
+		if (quantityRaw > variantStock) {
+			return fail(400, { message: `Stok tersisa ${variantStock} item.` });
+		}
+
+		const optionGroupRows = await db
+			.select({ id: optionGroups.id })
+			.from(optionGroups)
+			.where(eq(optionGroups.productId, productRow.id));
+
+		const optionGroupIds = optionGroupRows.map((group) => group.id);
+		const validOptionRows =
+			optionIds.length === 0 || optionGroupIds.length === 0
+				? []
+				: await db
+						.select({
+							id: options.id,
+							additionalPrice: options.additionalPrice
+						})
+						.from(options)
+						.where(
+							and(inArray(options.id, optionIds), inArray(options.optionGroupId, optionGroupIds))
+						);
+
+		if (optionIds.length > 0 && validOptionRows.length !== optionIds.length) {
+			return fail(400, { message: 'Satu atau lebih opsi yang dipilih tidak valid.' });
+		}
+
+		const optionPriceById = new Map(
+			validOptionRows.map((option) => [option.id, option.additionalPrice ?? 0] as const)
+		);
+
+		try {
+			await addItemToDraftCart({
+				userId: user.id,
+				variantId,
+				quantity: quantityRaw,
+				variantPrice: variantRow.price ?? 0,
+				variantStock,
+				optionIds,
+				optionPriceById
+			});
+		} catch (err) {
+			if (err instanceof CartActionError) {
+				return fail(err.status, { message: err.message });
+			}
+
+			console.error('[addToCart] unexpected error', err);
+			return fail(500, { message: 'Gagal menambahkan item ke keranjang. Silakan coba lagi.' });
+		}
+
+		return {
+			type: 'success' as const,
+			text: 'Item berhasil ditambahkan ke keranjang.'
+		};
+	}
 };

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import { Minus, Plus } from '@lucide/svelte/icons';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
@@ -18,6 +19,7 @@
 	import CardTitle from '$lib/components/ui/card/card-title.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import type { PageProps } from './$types';
+	import { toast } from 'svelte-sonner';
 
 	let { data }: PageProps = $props();
 
@@ -26,6 +28,7 @@
 	let quantity = $state(1);
 	let selectedOptionIdsByGroup = $state<Record<string, string>>({});
 	let hasInitializedSelections = $state(false);
+	let actionFeedback = $state('');
 
 	$effect(() => {
 		if (hasInitializedSelections) return;
@@ -65,6 +68,9 @@
 	const unitPrice = $derived((selectedVariant?.price ?? 0) + selectedOptionsAdditionalPrice);
 	const subtotal = $derived(unitPrice * quantity);
 	const availableStock = $derived(selectedVariant?.stock ?? 0);
+	const selectedOptionIds = $derived(
+		Object.values(selectedOptionIdsByGroup).filter((value): value is string => value.length > 0)
+	);
 
 	const selectVariant = (variantId: string) => {
 		selectedVariantId = variantId;
@@ -105,6 +111,42 @@
 		}
 
 		quantity = Math.min(availableStock, quantity + 1);
+	};
+
+	const enhanceAddToCart = () => {
+		return async ({
+			result,
+			update
+		}: {
+			result: { type: string; data?: unknown };
+			update: () => Promise<void>;
+		}) => {
+			if (result.type === 'success') {
+				const message =
+					typeof (result.data as { text?: unknown } | undefined)?.text === 'string'
+						? (result.data as { text: string }).text
+						: 'Item added to cart.';
+
+				actionFeedback = message;
+				toast.success(message);
+				await update();
+				return;
+			}
+
+			if (result.type === 'failure') {
+				const message =
+					typeof (result.data as { message?: unknown } | undefined)?.message === 'string'
+						? (result.data as { message: string }).message
+						: 'Failed to add item to cart.';
+
+				actionFeedback = message;
+				toast.error(message);
+				return;
+			}
+
+			actionFeedback = 'Unexpected error while adding item to cart.';
+			toast.error(actionFeedback);
+		};
 	};
 </script>
 
@@ -267,61 +309,76 @@
 		</section>
 
 		<aside class="lg:col-span-3" aria-label="Ringkasan pembelian">
-			<Card>
-				<CardHeader>
-					<CardTitle>{data.product.name}</CardTitle>
-				</CardHeader>
-				<CardContent class="space-y-4">
-					{#if selectedVariant}
-						<div class="flex gap-3">
-							<div class="max-w-12 overflow-hidden rounded-md border">
-								<img
-									src={selectedVariant.imgUrl}
-									alt={selectedVariant.name}
-									class="h-12 w-12 object-cover"
-								/>
+			<form method="POST" action="?/addToCart" use:enhance={enhanceAddToCart}>
+				<input type="hidden" name="variantId" value={selectedVariant?.id ?? ''} />
+				<input type="hidden" name="quantity" value={quantity} />
+				{#each selectedOptionIds as optionId (optionId)}
+					<input type="hidden" name="optionIds" value={optionId} />
+				{/each}
+
+				<Card>
+					<CardHeader>
+						<CardTitle>{data.product.name}</CardTitle>
+					</CardHeader>
+					<CardContent class="space-y-4">
+						{#if selectedVariant}
+							<div class="flex gap-3">
+								<div class="max-w-12 overflow-hidden rounded-md border">
+									<img
+										src={selectedVariant.imgUrl}
+										alt={selectedVariant.name}
+										class="h-12 w-12 object-cover"
+									/>
+								</div>
+								<div class="flex flex-col justify-center">
+									<span class="text-sm font-medium">{selectedVariant.name}</span>
+									<span class="text-xs text-muted-foreground"
+										>{formatCurrency(selectedVariant.price)}</span
+									>
+								</div>
 							</div>
-							<div class="flex flex-col justify-center">
-								<span class="text-sm font-medium">{selectedVariant.name}</span>
-								<span class="text-xs text-muted-foreground"
-									>{formatCurrency(selectedVariant.price)}</span
-								>
+						{/if}
+
+						<Separator />
+
+						<div class="flex items-center justify-between gap-3">
+							<div class="flex items-center gap-2">
+								<Button variant="outline" size="icon" type="button" onclick={decreaseQuantity}>
+									<Minus />
+								</Button>
+								<span class="w-10 text-center text-sm font-medium">{quantity}</span>
+								<Button variant="outline" size="icon" type="button" onclick={increaseQuantity}>
+									<Plus />
+								</Button>
+							</div>
+							<div class="text-right">
+								<p class="text-xs text-muted-foreground">Stok</p>
+								<p class="text-sm font-medium">{availableStock}</p>
 							</div>
 						</div>
-					{/if}
 
-					<Separator />
-
-					<div class="flex items-center justify-between gap-3">
-						<div class="flex items-center gap-2">
-							<Button variant="outline" size="icon" type="button" onclick={decreaseQuantity}>
-								<Minus />
-							</Button>
-							<span class="w-10 text-center text-sm font-medium">{quantity}</span>
-							<Button variant="outline" size="icon" type="button" onclick={increaseQuantity}>
-								<Plus />
-							</Button>
+						<div class="flex items-center justify-between">
+							<span class="text-sm text-muted-foreground">Subtotal</span>
+							<span class="text-base font-semibold text-foreground">{formatCurrency(subtotal)}</span
+							>
 						</div>
-						<div class="text-right">
-							<p class="text-xs text-muted-foreground">Stok</p>
-							<p class="text-sm font-medium">{availableStock}</p>
-						</div>
-					</div>
 
-					<div class="flex items-center justify-between">
-						<span class="text-sm text-muted-foreground">Subtotal</span>
-						<span class="text-base font-semibold text-foreground">{formatCurrency(subtotal)}</span>
-					</div>
-				</CardContent>
-				<CardFooter>
-					<div class="flex w-full flex-col gap-2">
-						<Button class="w-full">Checkout</Button>
-						<Button variant="outline" class="w-full" href={resolve('/categories')}
-							>Tambahkan ke keranjang</Button
-						>
-					</div>
-				</CardFooter>
-			</Card>
+						<p class="text-xs text-muted-foreground">
+							{actionFeedback || 'Ready to add item to cart.'}
+						</p>
+					</CardContent>
+					<CardFooter>
+						<div class="flex w-full flex-col gap-2">
+							<Button
+								class="w-full"
+								type="submit"
+								disabled={!selectedVariant || availableStock <= 0}>Add to cart</Button
+							>
+							<Button type="button" variant="outline" class="w-full" disabled>Checkout</Button>
+						</div>
+					</CardFooter>
+				</Card>
+			</form>
 		</aside>
 	</div>
 </main>

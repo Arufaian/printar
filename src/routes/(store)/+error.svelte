@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-
-	console.log();
 </script>
 
 <section class="relative isolate overflow-hidden">

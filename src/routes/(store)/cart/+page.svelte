@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
@@ -9,60 +10,28 @@
 	import Minus from '@lucide/svelte/icons/minus';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
+	import type { CartItemData } from '$lib/types/cart';
+	import type { PageProps } from './$types';
+	import { toast } from 'svelte-sonner';
 
-	type CartItem = {
-		id: string;
-		title: string;
-		variant: string;
-		options: string[];
-		image: string;
-		unitPrice: number;
-		quantity: number;
-		stock: number;
-	};
+	let { data }: PageProps = $props();
 
-	let cartItems = $state<CartItem[]>([
-		{
-			id: 'item-1',
-			title: 'Business Card Premium',
-			variant: 'Art Carton 310gsm',
-			options: ['Laminasi Doff', 'Sudut Rounded'],
-			image: 'https://picsum.photos/seed/cart-1/120/120',
-			unitPrice: 85000,
-			quantity: 2,
-			stock: 8
-		},
-		{
-			id: 'item-2',
-			title: 'Brochure A4 Full Color',
-			variant: 'Glossy 150gsm',
-			options: ['Lipat 3'],
-			image: 'https://picsum.photos/seed/cart-2/120/120',
-			unitPrice: 120000,
-			quantity: 1,
-			stock: 12
-		},
-		{
-			id: 'item-3',
-			title: 'Sticker Vinyl Outdoor',
-			variant: '30x40 cm',
-			options: ['Laminasi Gloss'],
-			image: 'https://picsum.photos/seed/cart-3/120/120',
-			unitPrice: 60000,
-			quantity: 3,
-			stock: 20
-		}
-	]);
+	let cartItems = $state<CartItemData[]>([]);
 
 	let selectedItemIds = $state<string[]>([]);
-	let hasInitializedSelection = $state(false);
-	const shippingCost = 15000;
+	let shippingCost = $state(0);
 
 	$effect(() => {
-		if (hasInitializedSelection) return;
-		selectedItemIds = cartItems.map((item) => item.id);
-		hasInitializedSelection = true;
+		const nextItems: CartItemData[] = data.cartItems;
+		cartItems = [...nextItems];
+		shippingCost = data.summary.shippingCost;
+		selectedItemIds = nextItems.map((item) => item.id);
 	});
+
+	const formatItemMeta = (item: CartItemData) => {
+		if (item.options.length === 0) return item.variant;
+		return `${item.variant} • ${item.options.join(', ')}`;
+	};
 
 	const isAllSelected = $derived(
 		cartItems.length > 0 && cartItems.every((item) => selectedItemIds.includes(item.id))
@@ -90,37 +59,62 @@
 		selectedItemIds = selectedItemIds.filter((id) => id !== itemId);
 	};
 
-	const updateItemQuantity = (itemId: string, nextQuantity: number) => {
-		cartItems = cartItems.map((item) => {
-			if (item.id !== itemId) return item;
-
-			const clamped = Math.max(1, Math.min(nextQuantity, item.stock));
-			return { ...item, quantity: clamped };
-		});
+	const getNextQuantity = (item: CartItemData, delta: number) => {
+		const rawNext = item.quantity + delta;
+		const upperBound = item.stock > 0 ? item.stock : Number.MAX_SAFE_INTEGER;
+		return Math.max(1, Math.min(rawNext, upperBound));
 	};
 
-	const removeItem = (itemId: string) => {
-		cartItems = cartItems.filter((item) => item.id !== itemId);
-		selectedItemIds = selectedItemIds.filter((id) => id !== itemId);
+	const enhanceCartAction = () => {
+		return async ({
+			result,
+			update
+		}: {
+			result: { type: string; data?: unknown };
+			update: () => Promise<void>;
+		}) => {
+			if (result.type === 'success') {
+				const message =
+					typeof (result.data as { text?: unknown } | undefined)?.text === 'string'
+						? (result.data as { text: string }).text
+						: 'Keranjang berhasil diperbarui.';
+
+				toast.success(message);
+				await update();
+				return;
+			}
+
+			if (result.type === 'failure') {
+				const message =
+					typeof (result.data as { message?: unknown } | undefined)?.message === 'string'
+						? (result.data as { message: string }).message
+						: 'Gagal memperbarui keranjang. Silakan coba lagi.';
+
+				toast.error(message);
+				return;
+			}
+
+			toast.error('Terjadi kendala saat memperbarui keranjang. Silakan coba lagi.');
+		};
 	};
 </script>
 
 <div class="container mx-auto px-4 py-8 lg:px-8">
 	{#if cartItems.length === 0}
 		<div class="mx-auto max-w-xl rounded-xl border border-dashed bg-card p-10 text-center">
-			<h1 class="text-2xl font-semibold">Your cart is empty</h1>
+			<h1 class="text-2xl font-semibold">Keranjang kamu masih kosong</h1>
 			<p class="mt-3 text-sm text-muted-foreground">
-				Looks like you have not added any product yet. Start exploring our categories.
+				Belum ada produk di keranjangmu. Yuk pilih produk favoritmu dari kategori yang tersedia.
 			</p>
-			<Button class="mt-6" href={resolve('/categories')}>Continue Shopping</Button>
+			<Button class="mt-6" href={resolve('/categories')}>Lanjut Belanja</Button>
 		</div>
 	{:else}
 		<div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
 			<div class="rounded-xl bg-card shadow lg:col-span-8">
 				<div class="p-4 md:p-6">
-					<h1 class="text-xl font-semibold md:text-2xl">Shopping Cart</h1>
+					<h1 class="text-xl font-semibold md:text-2xl">Keranjang Belanja</h1>
 					<p class="mt-1 text-sm text-muted-foreground">
-						{cartItems.length} item{cartItems.length > 1 ? 's' : ''} in your cart
+						{cartItems.length} item di keranjang kamu
 					</p>
 				</div>
 
@@ -132,7 +126,7 @@
 						checked={isAllSelected}
 						onCheckedChange={(checked) => toggleSelectAll(Boolean(checked))}
 					/>
-					<Label for="select-all-cart-items">Select all</Label>
+					<Label for="select-all-cart-items">Pilih Semua</Label>
 				</div>
 
 				<Separator />
@@ -154,9 +148,7 @@
 
 							<Item.Content>
 								<Item.Title>{item.title}</Item.Title>
-								<Item.Description>
-									{item.variant} • {item.options.join(', ')}
-								</Item.Description>
+								<Item.Description>{formatItemMeta(item)}</Item.Description>
 								<Item.Description class="mt-1 text-foreground">
 									{formatCurrency(item.unitPrice)} / item
 								</Item.Description>
@@ -164,38 +156,51 @@
 
 							<Item.Actions class="items-center gap-2">
 								<div class="flex items-center gap-1">
-									<Button
-										size="icon-sm"
-										variant="outline"
-										aria-label={`Decrease quantity for ${item.title}`}
-										onclick={() => updateItemQuantity(item.id, item.quantity - 1)}
-									>
-										<Minus />
-									</Button>
+									<form method="POST" action="?/updateQuantity" use:enhance={enhanceCartAction}>
+										<input type="hidden" name="itemId" value={item.id} />
+										<input type="hidden" name="quantity" value={getNextQuantity(item, -1)} />
+										<Button
+											type="submit"
+											size="icon-sm"
+											variant="outline"
+											aria-label={`Decrease quantity for ${item.title}`}
+											disabled={item.quantity <= 1}
+										>
+											<Minus />
+										</Button>
+									</form>
 									<span class="w-8 text-center text-sm font-medium">{item.quantity}</span>
-									<Button
-										size="icon-sm"
-										variant="outline"
-										aria-label={`Increase quantity for ${item.title}`}
-										onclick={() => updateItemQuantity(item.id, item.quantity + 1)}
-									>
-										<Plus />
-									</Button>
+									<form method="POST" action="?/updateQuantity" use:enhance={enhanceCartAction}>
+										<input type="hidden" name="itemId" value={item.id} />
+										<input type="hidden" name="quantity" value={getNextQuantity(item, 1)} />
+										<Button
+											type="submit"
+											size="icon-sm"
+											variant="outline"
+											aria-label={`Increase quantity for ${item.title}`}
+											disabled={item.stock > 0 && item.quantity >= item.stock}
+										>
+											<Plus />
+										</Button>
+									</form>
 								</div>
 								<div class="min-w-28 text-right">
 									<p class="text-sm font-semibold">
 										{formatCurrency(item.unitPrice * item.quantity)}
 									</p>
-									<p class="text-xs text-muted-foreground">Stock: {item.stock}</p>
+									<p class="text-xs text-muted-foreground">Stok: {item.stock}</p>
 								</div>
-								<Button
-									size="icon-sm"
-									variant="ghost"
-									aria-label={`Remove ${item.title} from cart`}
-									onclick={() => removeItem(item.id)}
-								>
-									<Trash2 />
-								</Button>
+								<form method="POST" action="?/removeItem" use:enhance={enhanceCartAction}>
+									<input type="hidden" name="itemId" value={item.id} />
+									<Button
+										type="submit"
+										size="icon-sm"
+										variant="ghost"
+										aria-label={`Remove ${item.title} from cart`}
+									>
+										<Trash2 />
+									</Button>
+								</form>
 							</Item.Actions>
 						</Item.Root>
 					{/each}
@@ -205,7 +210,7 @@
 			<aside
 				class="rounded-xl bg-card p-4 shadow lg:sticky lg:top-24 lg:col-span-4 lg:h-fit lg:p-6"
 			>
-				<h2 class="text-lg font-semibold">Order Summary</h2>
+				<h2 class="text-lg font-semibold">Ringkasan Belanja</h2>
 				<p class="mt-1 text-sm text-muted-foreground">
 					{selectedCount} item{selectedCount > 1 ? 's' : ''} selected
 				</p>
@@ -216,7 +221,7 @@
 						<span>{formatCurrency(selectedSubtotal)}</span>
 					</div>
 					<div class="flex items-center justify-between">
-						<span class="text-muted-foreground">Shipping</span>
+						<span class="text-muted-foreground">Ongkir</span>
 						<span>{selectedCount > 0 ? formatCurrency(shippingCost) : formatCurrency(0)}</span>
 					</div>
 				</div>
@@ -228,9 +233,9 @@
 					<span class="text-lg font-semibold">{formatCurrency(grandTotal)}</span>
 				</div>
 
-				<Button class="mt-5 w-full" disabled={selectedCount === 0}>Proceed to Checkout</Button>
+				<Button class="mt-5 w-full" disabled={selectedCount === 0}>Lanjut ke Checkout</Button>
 				<Button variant="outline" class="mt-2 w-full" href={resolve('/categories')}
-					>Continue Shopping</Button
+					>Lanjut Belanja</Button
 				>
 			</aside>
 		</div>

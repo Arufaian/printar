@@ -18,7 +18,7 @@
 		userProfile?: UserProfile | null;
 	};
 
-	let { cartCount = 3, userProfile = null }: Props = $props();
+	let { cartCount = 0, userProfile = null }: Props = $props();
 </script>
 
 <nav class="sticky top-0 z-50 border-b bg-background/95 backdrop-blur-sm">
