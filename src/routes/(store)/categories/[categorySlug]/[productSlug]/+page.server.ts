@@ -40,7 +40,9 @@ export const actions: Actions = {
 		const { user } = await event.locals.safeGetSession();
 
 		if (!user) {
-			return fail(401, { message: 'Please sign in first to add items to cart.' });
+			return fail(401, {
+				message: 'Silakan login terlebih dahulu untuk menambahkan item ke keranjang.'
+			});
 		}
 
 		const formData = await event.request.formData();
@@ -49,11 +51,11 @@ export const actions: Actions = {
 		const optionIds = normalizeOptionIds(formData.getAll('optionIds'));
 
 		if (!variantId) {
-			return fail(400, { message: 'Variant is required.' });
+			return fail(400, { message: 'Varian wajib dipilih.' });
 		}
 
 		if (!Number.isInteger(quantityRaw) || quantityRaw < 1) {
-			return fail(400, { message: 'Quantity must be at least 1.' });
+			return fail(400, { message: 'Jumlah minimal 1.' });
 		}
 
 		const params = {
@@ -63,7 +65,7 @@ export const actions: Actions = {
 
 		const { productRow } = await resolveStoreProductByParams(params);
 		if (!productRow) {
-			return fail(404, { message: 'Product not found.' });
+			return fail(404, { message: 'Produk tidak ditemukan.' });
 		}
 
 		const [profileRow] = await db
@@ -73,7 +75,7 @@ export const actions: Actions = {
 			.limit(1);
 
 		if (!profileRow) {
-			return fail(403, { message: 'Profile not found for current user.' });
+			return fail(403, { message: 'Profil pengguna tidak ditemukan.' });
 		}
 
 		const [variantRow] = await db
@@ -87,16 +89,16 @@ export const actions: Actions = {
 			.limit(1);
 
 		if (!variantRow) {
-			return fail(400, { message: 'Selected variant is invalid.' });
+			return fail(400, { message: 'Varian yang dipilih tidak valid.' });
 		}
 
 		const variantStock = Number.isFinite(variantRow.stock) ? (variantRow.stock ?? 0) : 0;
 		if (variantStock <= 0) {
-			return fail(400, { message: 'Selected variant is out of stock.' });
+			return fail(400, { message: 'Varian yang dipilih sedang habis.' });
 		}
 
 		if (quantityRaw > variantStock) {
-			return fail(400, { message: `Only ${variantStock} item(s) left in stock.` });
+			return fail(400, { message: `Stok tersisa ${variantStock} item.` });
 		}
 
 		const optionGroupRows = await db
@@ -119,7 +121,7 @@ export const actions: Actions = {
 						);
 
 		if (optionIds.length > 0 && validOptionRows.length !== optionIds.length) {
-			return fail(400, { message: 'One or more selected options are invalid.' });
+			return fail(400, { message: 'Satu atau lebih opsi yang dipilih tidak valid.' });
 		}
 
 		const optionPriceById = new Map(
@@ -142,12 +144,12 @@ export const actions: Actions = {
 			}
 
 			console.error('[addToCart] unexpected error', err);
-			return fail(500, { message: 'Failed to add item to cart. Please try again.' });
+			return fail(500, { message: 'Gagal menambahkan item ke keranjang. Silakan coba lagi.' });
 		}
 
 		return {
 			type: 'success' as const,
-			text: 'Item added to cart.'
+			text: 'Item berhasil ditambahkan ke keranjang.'
 		};
 	}
 };

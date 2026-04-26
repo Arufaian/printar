@@ -12,7 +12,7 @@ type UpdateCartItemQuantityInput = {
 
 export async function updateCartItemQuantity(input: UpdateCartItemQuantityInput): Promise<void> {
 	if (input.quantity > input.ownedItem.variantStock) {
-		throw new CartActionError(400, `Only ${input.ownedItem.variantStock} item(s) left in stock.`);
+		throw new CartActionError(400, `Stok tersisa ${input.ownedItem.variantStock} item.`);
 	}
 
 	await db.transaction(async (tx) => {

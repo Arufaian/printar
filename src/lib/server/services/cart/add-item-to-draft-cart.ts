@@ -87,7 +87,7 @@ export async function addItemToDraftCart(input: AddItemToDraftCartInput): Promis
 			const nextQuantity = existingQuantity + input.quantity;
 
 			if (nextQuantity > input.variantStock) {
-				throw new CartActionError(400, `Only ${input.variantStock} item(s) left in stock.`);
+				throw new CartActionError(400, `Stok tersisa ${input.variantStock} item.`);
 			}
 
 			await tx

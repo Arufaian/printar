@@ -22,7 +22,7 @@ export const actions: Actions = {
 	updateQuantity: async (event) => {
 		const { user } = await event.locals.safeGetSession();
 		if (!user) {
-			return fail(401, { message: 'Please sign in first.' });
+			return fail(401, { message: 'Silakan login terlebih dahulu.' });
 		}
 
 		const formData = await event.request.formData();
@@ -30,11 +30,11 @@ export const actions: Actions = {
 		const quantity = Number(formData.get('quantity'));
 
 		if (!itemId) {
-			return fail(400, { message: 'Cart item is required.' });
+			return fail(400, { message: 'Item keranjang wajib diisi.' });
 		}
 
 		if (!Number.isInteger(quantity) || quantity < 1) {
-			return fail(400, { message: 'Quantity must be at least 1.' });
+			return fail(400, { message: 'Jumlah minimal 1.' });
 		}
 
 		try {
@@ -43,7 +43,7 @@ export const actions: Actions = {
 
 			return {
 				type: 'success' as const,
-				text: 'Item quantity updated.'
+				text: 'Jumlah item berhasil diperbarui.'
 			};
 		} catch (err) {
 			if (err instanceof CartActionError) {
@@ -51,21 +51,21 @@ export const actions: Actions = {
 			}
 
 			console.error('[cart:updateQuantity] unexpected error', err);
-			return fail(500, { message: 'Failed to update quantity. Please try again.' });
+			return fail(500, { message: 'Gagal memperbarui jumlah item. Silakan coba lagi.' });
 		}
 	},
 
 	removeItem: async (event) => {
 		const { user } = await event.locals.safeGetSession();
 		if (!user) {
-			return fail(401, { message: 'Please sign in first.' });
+			return fail(401, { message: 'Silakan login terlebih dahulu.' });
 		}
 
 		const formData = await event.request.formData();
 		const itemId = String(formData.get('itemId') ?? '').trim();
 
 		if (!itemId) {
-			return fail(400, { message: 'Cart item is required.' });
+			return fail(400, { message: 'Item keranjang wajib diisi.' });
 		}
 
 		try {
@@ -74,7 +74,7 @@ export const actions: Actions = {
 
 			return {
 				type: 'success' as const,
-				text: 'Item removed from cart.'
+				text: 'Item berhasil dihapus dari keranjang.'
 			};
 		} catch (err) {
 			if (err instanceof CartActionError) {
@@ -82,7 +82,7 @@ export const actions: Actions = {
 			}
 
 			console.error('[cart:removeItem] unexpected error', err);
-			return fail(500, { message: 'Failed to remove item. Please try again.' });
+			return fail(500, { message: 'Gagal menghapus item. Silakan coba lagi.' });
 		}
 	}
 };

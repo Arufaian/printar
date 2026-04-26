@@ -56,7 +56,7 @@ export async function buildCartPayload(userId: string): Promise<CartPayload> {
 	for (const optionRow of optionRows) {
 		if (!optionRow.orderItemId) continue;
 
-		const normalizedOptionName = optionRow.optionName?.trim() || 'Option';
+		const normalizedOptionName = optionRow.optionName?.trim() || 'Opsi';
 		const optionList = optionNamesByItemId.get(optionRow.orderItemId) ?? [];
 		optionList.push(normalizedOptionName);
 		optionNamesByItemId.set(optionRow.orderItemId, optionList);
@@ -74,8 +74,8 @@ export async function buildCartPayload(userId: string): Promise<CartPayload> {
 
 		return {
 			id: item.id,
-			title: item.productName?.trim() || 'Untitled Product',
-			variant: item.variantName?.trim() || 'Variant',
+			title: item.productName?.trim() || 'Produk Tanpa Nama',
+			variant: item.variantName?.trim() || 'Varian',
 			options: optionNamesByItemId.get(item.id) ?? [],
 			image:
 				item.variantImage?.trim() ||

@@ -21,7 +21,7 @@ export async function requireDraftItemOwnership(
 		.limit(1);
 
 	if (!draftItem?.orderId || !draftItem.itemId) {
-		throw new CartActionError(404, 'Cart item not found.');
+		throw new CartActionError(404, 'Item keranjang tidak ditemukan.');
 	}
 
 	return {

@@ -174,7 +174,7 @@ describe('store cart page server load', () => {
 		const output = asActionFailureResult(result);
 
 		expect(output.status).toBe(401);
-		expect(output.data.message).toContain('Please sign in first');
+		expect(output.data.message).toContain('Silakan login terlebih dahulu');
 		expect(selectMock).not.toHaveBeenCalled();
 	});
 
@@ -185,7 +185,7 @@ describe('store cart page server load', () => {
 		const output = asActionFailureResult(result);
 
 		expect(output.status).toBe(400);
-		expect(output.data.message).toContain('Quantity must be at least 1');
+		expect(output.data.message).toContain('Jumlah minimal 1');
 		expect(selectMock).not.toHaveBeenCalled();
 	});
 
@@ -203,7 +203,7 @@ describe('store cart page server load', () => {
 		const output = asActionFailureResult(result);
 
 		expect(output.status).toBe(400);
-		expect(output.data.message).toContain('Cart item is required');
+		expect(output.data.message).toContain('Item keranjang wajib diisi');
 		expect(selectMock).not.toHaveBeenCalled();
 	});
 });
