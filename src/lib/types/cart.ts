@@ -3,6 +3,8 @@ export type CartItemData = {
 	title: string;
 	variant: string;
 	options: string[];
+	designFilePath: string | null;
+	hasDesignFile: boolean;
 	image: string;
 	unitPrice: number;
 	quantity: number;

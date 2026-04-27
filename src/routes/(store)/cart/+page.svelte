@@ -149,6 +149,11 @@
 							<Item.Content>
 								<Item.Title>{item.title}</Item.Title>
 								<Item.Description>{formatItemMeta(item)}</Item.Description>
+								<Item.Description
+									class={item.hasDesignFile ? 'text-emerald-600' : 'text-amber-600'}
+								>
+									{item.hasDesignFile ? 'File desain terlampir' : 'Belum upload file desain'}
+								</Item.Description>
 								<Item.Description class="mt-1 text-foreground">
 									{formatCurrency(item.unitPrice)} / item
 								</Item.Description>

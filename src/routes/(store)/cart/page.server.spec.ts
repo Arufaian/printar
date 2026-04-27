@@ -130,6 +130,7 @@ describe('store cart page server load', () => {
 				id: 'item-1',
 				quantity: 2,
 				itemPrice: 10000,
+				filePath: 'customer-design/user-1/design-a.pdf',
 				variantName: 'Varian A',
 				variantStock: 9,
 				variantImage: null,
@@ -155,6 +156,8 @@ describe('store cart page server load', () => {
 			title: 'Produk A',
 			variant: 'Varian A',
 			options: ['Laminasi Doff'],
+			designFilePath: 'customer-design/user-1/design-a.pdf',
+			hasDesignFile: true,
 			unitPrice: 10500,
 			quantity: 2,
 			stock: 9
@@ -164,6 +167,34 @@ describe('store cart page server load', () => {
 			subtotal: 21000,
 			shippingCost: 1000,
 			total: 22000
+		});
+	});
+
+	it('maps item without design file as missing design status', async () => {
+		mockDraftOrderQuery([{ id: 'order-2', shippingCost: 0, totalPrice: null }]);
+		mockOrderItemsQuery([
+			{
+				id: 'item-2',
+				quantity: 1,
+				itemPrice: 8000,
+				filePath: null,
+				variantName: 'Varian B',
+				variantStock: 4,
+				variantImage: null,
+				productName: 'Produk B'
+			}
+		]);
+		mockItemOptionsQuery([]);
+
+		const result = (await load(makeEvent('b7f5c31c-6c16-4f91-bcab-35b67cc8cb9b'))) as {
+			cartItems: Array<Record<string, unknown>>;
+		};
+
+		expect(result.cartItems).toHaveLength(1);
+		expect(result.cartItems[0]).toMatchObject({
+			id: 'item-2',
+			designFilePath: null,
+			hasDesignFile: false
 		});
 	});
 

@@ -24,6 +24,7 @@ export async function buildCartPayload(userId: string): Promise<CartPayload> {
 			id: orderItems.id,
 			quantity: orderItems.quantity,
 			itemPrice: orderItems.price,
+			filePath: orderItems.filePath,
 			variantName: variants.name,
 			variantStock: variants.stock,
 			variantImage: variants.imgUrl,
@@ -77,6 +78,8 @@ export async function buildCartPayload(userId: string): Promise<CartPayload> {
 			title: item.productName?.trim() || 'Produk Tanpa Nama',
 			variant: item.variantName?.trim() || 'Varian',
 			options: optionNamesByItemId.get(item.id) ?? [],
+			designFilePath: item.filePath?.trim() || null,
+			hasDesignFile: Boolean(item.filePath?.trim()),
 			image:
 				item.variantImage?.trim() ||
 				`https://picsum.photos/seed/cart-item-${encodeURIComponent(item.id)}/120/120`,
