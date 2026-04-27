@@ -78,6 +78,14 @@
 		return `customer-design/${userId}/${crypto.randomUUID()}.${extension}`;
 	};
 
+	const getDesignFileUrl = (designFilePath: string | null) => {
+		if (!designFilePath || !page.data.supabase) return '';
+		const { data } = page.data.supabase.storage
+			.from(PUBLIC_BUCKET_NAME)
+			.getPublicUrl(designFilePath);
+		return data.publicUrl;
+	};
+
 	const openAttachDesignPicker = (itemId: string) => {
 		if (isUploadingDesign) return;
 		uploadingDesignItemId = itemId;
@@ -236,6 +244,7 @@
 							{isUploadingDesign}
 							{uploadingDesignItemId}
 							{formatItemMeta}
+							{getDesignFileUrl}
 							onToggleSelect={toggleSelectItem}
 							onAttachDesign={openAttachDesignPicker}
 							{getNextQuantity}
