@@ -21,9 +21,14 @@ const makeEvent = (userId: string | null) =>
 		}
 	}) as unknown as Parameters<typeof load>[0];
 
-const buildFormRequest = (payload: Record<string, string>) => {
+const buildFormRequest = (payload: Record<string, string | string[]>) => {
 	const formData = new URLSearchParams();
 	for (const [key, value] of Object.entries(payload)) {
+		if (Array.isArray(value)) {
+			for (const item of value) formData.append(key, item);
+			continue;
+		}
+
 		formData.append(key, value);
 	}
 
@@ -34,7 +39,7 @@ const buildFormRequest = (payload: Record<string, string>) => {
 	});
 };
 
-const makeActionEvent = (payload: Record<string, string>, userId: string | null) =>
+const makeActionEvent = (payload: Record<string, string | string[]>, userId: string | null) =>
 	({
 		request: buildFormRequest(payload),
 		locals: {
@@ -43,6 +48,16 @@ const makeActionEvent = (payload: Record<string, string>, userId: string | null)
 			}))
 		}
 	}) as unknown as Parameters<NonNullable<typeof actions.updateQuantity>>[0];
+
+const makeCheckoutEvent = (payload: Record<string, string | string[]>, userId: string | null) =>
+	({
+		request: buildFormRequest(payload),
+		locals: {
+			safeGetSession: vi.fn(async () => ({
+				user: userId ? { id: userId } : null
+			}))
+		}
+	}) as unknown as Parameters<NonNullable<typeof actions.checkout>>[0];
 
 type ActionFailureResult = {
 	status: number;
@@ -85,6 +100,16 @@ const mockItemOptionsQuery = (rows: Array<Record<string, unknown>>) => {
 	selectMock.mockImplementationOnce(() => ({
 		from: vi.fn(() => ({
 			leftJoin: vi.fn(() => ({
+				where: vi.fn(async () => rows)
+			}))
+		}))
+	}));
+};
+
+const mockCheckoutSelectionQuery = (rows: Array<Record<string, unknown>>) => {
+	selectMock.mockImplementationOnce(() => ({
+		from: vi.fn(() => ({
+			innerJoin: vi.fn(() => ({
 				where: vi.fn(async () => rows)
 			}))
 		}))
@@ -236,5 +261,82 @@ describe('store cart page server load', () => {
 		expect(output.status).toBe(400);
 		expect(output.data.message).toContain('Item keranjang wajib diisi');
 		expect(selectMock).not.toHaveBeenCalled();
+	});
+
+	it('checkout rejects unauthenticated users', async () => {
+		const result = await actions.checkout(makeCheckoutEvent({ selectedItemIds: ['item-1'] }, null));
+		const output = asActionFailureResult(result);
+
+		expect(output.status).toBe(401);
+		expect(output.data.message).toContain('Silakan login terlebih dahulu');
+		expect(selectMock).not.toHaveBeenCalled();
+	});
+
+	it('checkout rejects empty selection before DB query', async () => {
+		const result = await actions.checkout(
+			makeCheckoutEvent({ selectedItemIds: [] }, 'b7f5c31c-6c16-4f91-bcab-35b67cc8cb9b')
+		);
+		const output = asActionFailureResult(result);
+
+		expect(output.status).toBe(400);
+		expect(output.data.message).toContain('Pilih minimal satu item');
+		expect(selectMock).not.toHaveBeenCalled();
+	});
+
+	it('checkout rejects when selected item is not found', async () => {
+		mockCheckoutSelectionQuery([]);
+
+		const result = await actions.checkout(
+			makeCheckoutEvent({ selectedItemIds: ['item-1'] }, 'b7f5c31c-6c16-4f91-bcab-35b67cc8cb9b')
+		);
+		const output = asActionFailureResult(result);
+
+		expect(output.status).toBe(404);
+		expect(output.data.message).toContain('tidak ditemukan');
+	});
+
+	it('checkout rejects when selected item has no design file', async () => {
+		mockCheckoutSelectionQuery([
+			{
+				itemId: 'item-1',
+				orderId: 'order-1',
+				filePath: null
+			}
+		]);
+
+		const result = await actions.checkout(
+			makeCheckoutEvent({ selectedItemIds: ['item-1'] }, 'b7f5c31c-6c16-4f91-bcab-35b67cc8cb9b')
+		);
+		const output = asActionFailureResult(result);
+
+		expect(output.status).toBe(400);
+		expect(output.data.message).toContain('belum memiliki file desain');
+	});
+
+	it('checkout redirects to /checkout with selected item ids', async () => {
+		mockCheckoutSelectionQuery([
+			{
+				itemId: 'item-1',
+				orderId: 'order-1',
+				filePath: 'customer-design/user-1/design-1.pdf'
+			},
+			{
+				itemId: 'item-2',
+				orderId: 'order-1',
+				filePath: 'customer-design/user-1/design-2.pdf'
+			}
+		]);
+
+		await expect(
+			actions.checkout(
+				makeCheckoutEvent(
+					{ selectedItemIds: ['item-1', 'item-2'] },
+					'b7f5c31c-6c16-4f91-bcab-35b67cc8cb9b'
+				)
+			)
+		).rejects.toMatchObject({
+			status: 303,
+			location: '/checkout?itemId=item-1&itemId=item-2'
+		});
 	});
 });

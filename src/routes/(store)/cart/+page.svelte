@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
+	import { applyAction, enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
@@ -95,6 +95,21 @@
 			}
 
 			toast.error('Terjadi kendala saat memperbarui keranjang. Silakan coba lagi.');
+		};
+	};
+
+	const enhanceCheckoutAction = () => {
+		return async ({ result }: { result: { type: string; data?: unknown } }) => {
+			if (result.type === 'failure') {
+				const message =
+					typeof (result.data as { message?: unknown } | undefined)?.message === 'string'
+						? (result.data as { message: string }).message
+						: 'Checkout gagal. Silakan coba lagi.';
+
+				toast.error(message);
+			}
+
+			await applyAction(result as Parameters<typeof applyAction>[0]);
 		};
 	};
 </script>
@@ -238,7 +253,14 @@
 					<span class="text-lg font-semibold">{formatCurrency(grandTotal)}</span>
 				</div>
 
-				<Button class="mt-5 w-full" disabled={selectedCount === 0}>Lanjut ke Checkout</Button>
+				<form method="POST" action="?/checkout" use:enhance={enhanceCheckoutAction}>
+					{#each selectedItemIds as selectedId (selectedId)}
+						<input type="hidden" name="selectedItemIds" value={selectedId} />
+					{/each}
+					<Button class="mt-5 w-full" type="submit" disabled={selectedCount === 0}
+						>Lanjut ke Checkout</Button
+					>
+				</form>
 				<Button variant="outline" class="mt-2 w-full" href={resolve('/categories')}
 					>Lanjut Belanja</Button
 				>
