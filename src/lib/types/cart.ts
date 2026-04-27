@@ -27,4 +27,5 @@ export type DraftItemOwnership = {
 	orderId: string;
 	itemId: string;
 	variantStock: number;
+	filePath: string | null;
 };

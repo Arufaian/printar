@@ -2,11 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const selectMock = vi.hoisted(() => vi.fn());
 const transactionMock = vi.hoisted(() => vi.fn());
+const updateMock = vi.hoisted(() => vi.fn());
 
 vi.mock('$lib/server/db', () => ({
 	db: {
 		select: selectMock,
-		transaction: transactionMock
+		transaction: transactionMock,
+		update: updateMock
 	}
 }));
 
@@ -58,6 +60,23 @@ const makeCheckoutEvent = (payload: Record<string, string | string[]>, userId: s
 			}))
 		}
 	}) as unknown as Parameters<NonNullable<typeof actions.checkout>>[0];
+
+const makeAttachDesignEvent = (payload: Record<string, string | string[]>, userId: string | null) =>
+	({
+		request: buildFormRequest(payload),
+		locals: {
+			safeGetSession: vi.fn(async () => ({
+				user: userId ? { id: userId } : null
+			})),
+			supabase: {
+				storage: {
+					from: vi.fn(() => ({
+						remove: vi.fn(async () => ({ error: null }))
+					}))
+				}
+			}
+		}
+	}) as unknown as Parameters<NonNullable<typeof actions.attachDesignFile>>[0];
 
 type ActionFailureResult = {
 	status: number;
@@ -111,6 +130,20 @@ const mockCheckoutSelectionQuery = (rows: Array<Record<string, unknown>>) => {
 		from: vi.fn(() => ({
 			innerJoin: vi.fn(() => ({
 				where: vi.fn(async () => rows)
+			}))
+		}))
+	}));
+};
+
+const mockOwnershipQuery = (rows: Array<Record<string, unknown>>) => {
+	selectMock.mockImplementationOnce(() => ({
+		from: vi.fn(() => ({
+			innerJoin: vi.fn(() => ({
+				leftJoin: vi.fn(() => ({
+					where: vi.fn(() => ({
+						limit: vi.fn(async () => rows)
+					}))
+				}))
 			}))
 		}))
 	}));
@@ -338,5 +371,69 @@ describe('store cart page server load', () => {
 			status: 303,
 			location: '/checkout?itemId=item-1&itemId=item-2'
 		});
+	});
+
+	it('attachDesignFile rejects unauthenticated users', async () => {
+		const result = await actions.attachDesignFile(
+			makeAttachDesignEvent(
+				{ itemId: 'item-1', designFilePath: 'customer-design/user-1/design.pdf' },
+				null
+			)
+		);
+		const output = asActionFailureResult(result);
+
+		expect(output.status).toBe(401);
+		expect(output.data.message).toContain('Silakan login terlebih dahulu');
+	});
+
+	it('attachDesignFile rejects invalid design file path', async () => {
+		const result = await actions.attachDesignFile(
+			makeAttachDesignEvent(
+				{ itemId: 'item-1', designFilePath: 'https://example.com/design.pdf' },
+				'b7f5c31c-6c16-4f91-bcab-35b67cc8cb9b'
+			)
+		);
+		const output = asActionFailureResult(result);
+
+		expect(output.status).toBe(400);
+		expect(output.data.message).toContain('Path file desain tidak valid');
+		expect(selectMock).not.toHaveBeenCalled();
+	});
+
+	it('attachDesignFile updates selected cart item', async () => {
+		mockOwnershipQuery([
+			{
+				orderId: 'order-1',
+				itemId: 'item-1',
+				variantStock: 4,
+				filePath: null
+			}
+		]);
+
+		const whereMock = vi.fn(async () => [{ id: 'item-1' }]);
+		const setMock = vi.fn(() => ({
+			where: whereMock
+		}));
+
+		updateMock.mockImplementationOnce(() => ({
+			set: setMock
+		}));
+
+		const result = (await actions.attachDesignFile(
+			makeAttachDesignEvent(
+				{ itemId: 'item-1', designFilePath: 'customer-design/user-1/design.pdf' },
+				'b7f5c31c-6c16-4f91-bcab-35b67cc8cb9b'
+			)
+		)) as {
+			type: string;
+			text: string;
+		};
+
+		expect(updateMock).toHaveBeenCalledTimes(1);
+		expect(setMock).toHaveBeenCalledWith({
+			filePath: 'customer-design/user-1/design.pdf'
+		});
+		expect(result.type).toBe('success');
+		expect(result.text).toContain('berhasil dilampirkan');
 	});
 });

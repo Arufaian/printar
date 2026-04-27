@@ -40,6 +40,8 @@
 	let designPreviewUrl = $state('');
 	let designFilePath = $state('');
 	let isUploadingDesign = $state(false);
+	const uploadedDesignPaths = new Set<string>();
+	const consumedDesignPaths = new Set<string>();
 
 	$effect(() => {
 		if (hasInitializedSelections) return;
@@ -139,6 +141,32 @@
 		return `customer-design/${userId}/${crypto.randomUUID()}.${extension}`;
 	};
 
+	const removeDesignPathsFromStorage = async (paths: Iterable<string>) => {
+		const targetPaths = Array.from(
+			new Set(
+				Array.from(paths)
+					.map((value) => value.trim())
+					.filter(Boolean)
+			)
+		);
+
+		if (targetPaths.length === 0) {
+			return;
+		}
+
+		const supabase = page.data.supabase;
+		if (!supabase) return;
+
+		try {
+			const { error } = await supabase.storage.from(PUBLIC_BUCKET_NAME).remove(targetPaths);
+			if (error) {
+				console.error('[pdp:design] cleanup failed', error);
+			}
+		} catch (error) {
+			console.error('[pdp:design] cleanup failed', error);
+		}
+	};
+
 	const handleDesignFileChange = async (event: Event) => {
 		const input = event.currentTarget as HTMLInputElement;
 		const file = input.files?.[0];
@@ -173,6 +201,8 @@
 
 		try {
 			const nextPath = createDesignFilePath(userId, file.name);
+			const previousPath = designFilePath.trim();
+
 			const { error } = await supabase.storage.from(PUBLIC_BUCKET_NAME).upload(nextPath, file, {
 				upsert: false,
 				contentType: file.type
@@ -182,7 +212,13 @@
 				throw error;
 			}
 
+			if (previousPath && !consumedDesignPaths.has(previousPath)) {
+				await removeDesignPathsFromStorage([previousPath]);
+				uploadedDesignPaths.delete(previousPath);
+			}
+
 			designFilePath = nextPath;
+			uploadedDesignPaths.add(nextPath);
 			clearDesignPreview();
 
 			if (file.type.startsWith('image/')) {
@@ -214,6 +250,9 @@
 						: 'Item added to cart.';
 
 				actionFeedback = message;
+				if (designFilePath.trim()) {
+					consumedDesignPaths.add(designFilePath.trim());
+				}
 				toast.success(message);
 				await update();
 				return;
@@ -236,6 +275,10 @@
 	};
 
 	onDestroy(() => {
+		const orphanPaths = Array.from(uploadedDesignPaths).filter(
+			(path) => !consumedDesignPaths.has(path)
+		);
+		void removeDesignPathsFromStorage(orphanPaths);
 		clearDesignPreview();
 	});
 </script>

@@ -1,17 +1,21 @@
 <script lang="ts">
+	import { PUBLIC_BUCKET_NAME } from '$env/static/public';
 	import { applyAction, enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import * as Item from '$lib/components/ui/item/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { formatCurrency } from '$lib/utils/string.js';
+	import Paperclip from '@lucide/svelte/icons/paperclip';
 	import Minus from '@lucide/svelte/icons/minus';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import type { CartItemData } from '$lib/types/cart';
 	import type { PageProps } from './$types';
+	import { tick } from 'svelte';
 	import { toast } from 'svelte-sonner';
 
 	let { data }: PageProps = $props();
@@ -20,6 +24,14 @@
 
 	let selectedItemIds = $state<string[]>([]);
 	let shippingCost = $state(0);
+	let designFileInput = $state<HTMLInputElement | null>(null);
+	let attachDesignForm = $state<HTMLFormElement | null>(null);
+	let attachDesignItemId = $state('');
+	let attachDesignFilePath = $state('');
+	let isUploadingDesign = $state(false);
+	let uploadingDesignItemId = $state<string | null>(null);
+
+	const MAX_DESIGN_FILE_SIZE_BYTES = 2 * 1024 * 1024;
 
 	$effect(() => {
 		const nextItems: CartItemData[] = data.cartItems;
@@ -63,6 +75,78 @@
 		const rawNext = item.quantity + delta;
 		const upperBound = item.stock > 0 ? item.stock : Number.MAX_SAFE_INTEGER;
 		return Math.max(1, Math.min(rawNext, upperBound));
+	};
+
+	const createDesignFilePath = (userId: string, fileName: string) => {
+		const extension = fileName.split('.').pop()?.toLowerCase() ?? 'bin';
+		return `customer-design/${userId}/${crypto.randomUUID()}.${extension}`;
+	};
+
+	const openAttachDesignPicker = (itemId: string) => {
+		if (isUploadingDesign) return;
+		uploadingDesignItemId = itemId;
+		designFileInput?.click();
+	};
+
+	const handleAttachDesignFileChange = async (event: Event) => {
+		const input = event.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+
+		if (!file || !uploadingDesignItemId) {
+			uploadingDesignItemId = null;
+			return;
+		}
+
+		const isSupportedFile = file.type === 'application/pdf' || file.type.startsWith('image/');
+		if (!isSupportedFile) {
+			toast.error('Format file harus gambar atau PDF.');
+			input.value = '';
+			uploadingDesignItemId = null;
+			return;
+		}
+
+		if (file.size > MAX_DESIGN_FILE_SIZE_BYTES) {
+			toast.error('Ukuran file maksimal 2MB.');
+			input.value = '';
+			uploadingDesignItemId = null;
+			return;
+		}
+
+		const supabase = page.data.supabase;
+		const userId = page.data.session?.user?.id;
+
+		if (!supabase || !userId) {
+			toast.error('Silakan login terlebih dahulu sebelum upload file desain.');
+			input.value = '';
+			uploadingDesignItemId = null;
+			return;
+		}
+
+		isUploadingDesign = true;
+
+		try {
+			const nextPath = createDesignFilePath(userId, file.name);
+			const { error } = await supabase.storage.from(PUBLIC_BUCKET_NAME).upload(nextPath, file, {
+				upsert: false,
+				contentType: file.type
+			});
+
+			if (error) {
+				throw error;
+			}
+
+			attachDesignItemId = uploadingDesignItemId;
+			attachDesignFilePath = nextPath;
+			await tick();
+			attachDesignForm?.requestSubmit();
+		} catch (error) {
+			toast.error('Gagal upload file desain. Silakan coba lagi.');
+			console.error(error);
+		} finally {
+			isUploadingDesign = false;
+			uploadingDesignItemId = null;
+			input.value = '';
+		}
 	};
 
 	const enhanceCartAction = () => {
@@ -115,6 +199,25 @@
 </script>
 
 <div class="container mx-auto px-4 py-8 lg:px-8">
+	<input
+		id="cart-design-file-input"
+		type="file"
+		accept="image/*,application/pdf"
+		class="hidden"
+		bind:this={designFileInput}
+		onchange={handleAttachDesignFileChange}
+	/>
+	<form
+		method="POST"
+		action="?/attachDesignFile"
+		class="hidden"
+		use:enhance={enhanceCartAction}
+		bind:this={attachDesignForm}
+	>
+		<input type="hidden" name="itemId" value={attachDesignItemId} />
+		<input type="hidden" name="designFilePath" value={attachDesignFilePath} />
+	</form>
+
 	{#if cartItems.length === 0}
 		<div class="mx-auto max-w-xl rounded-xl border border-dashed bg-card p-10 text-center">
 			<h1 class="text-2xl font-semibold">Keranjang kamu masih kosong</h1>
@@ -172,6 +275,21 @@
 								<Item.Description class="mt-1 text-foreground">
 									{formatCurrency(item.unitPrice)} / item
 								</Item.Description>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									class="mt-2 w-fit"
+									onclick={() => openAttachDesignPicker(item.id)}
+									disabled={isUploadingDesign}
+								>
+									<Paperclip class="size-4" />
+									{isUploadingDesign && uploadingDesignItemId === item.id
+										? 'Mengunggah...'
+										: item.hasDesignFile
+											? 'Ganti file desain'
+											: 'Upload file desain'}
+								</Button>
 							</Item.Content>
 
 							<Item.Actions class="items-center gap-2">

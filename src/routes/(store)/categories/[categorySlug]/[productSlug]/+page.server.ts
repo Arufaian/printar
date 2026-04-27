@@ -3,7 +3,11 @@ import { error, fail } from '@sveltejs/kit';
 import type { Actions } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { optionGroups, options, profiles, variants } from '$lib/server/db/schema';
-import { CartActionError, addItemToDraftCart } from '$lib/server/services/cart';
+import {
+	CartActionError,
+	addItemToDraftCart,
+	parseOptionalDesignFilePath
+} from '$lib/server/services/cart';
 import {
 	StoreCategoryNotFoundError,
 	StoreProductNotFoundError,
@@ -11,37 +15,6 @@ import {
 	normalizeOptionIds,
 	resolveStoreProductByParams
 } from '$lib/server/services/store-product';
-
-const DESIGN_FILE_PATH_PATTERN = /^customer-design\/[A-Za-z0-9/_\-.]+$/;
-
-const parseDesignFilePath = (value: FormDataEntryValue | null) => {
-	const rawValue = String(value ?? '').trim();
-
-	if (rawValue === '') {
-		return {
-			ok: true as const,
-			value: undefined
-		};
-	}
-
-	if (
-		rawValue.length > 500 ||
-		rawValue.startsWith('/') ||
-		rawValue.includes('..') ||
-		rawValue.includes('://') ||
-		!DESIGN_FILE_PATH_PATTERN.test(rawValue)
-	) {
-		return {
-			ok: false as const,
-			message: 'Path file desain tidak valid.'
-		};
-	}
-
-	return {
-		ok: true as const,
-		value: rawValue
-	};
-};
 
 export const load = async (
 	event: Parameters<NonNullable<import('./$types').PageServerLoad>>[0]
@@ -80,7 +53,7 @@ export const actions: Actions = {
 		const variantId = String(formData.get('variantId') ?? '').trim();
 		const quantityRaw = Number(formData.get('quantity'));
 		const optionIds = normalizeOptionIds(formData.getAll('optionIds'));
-		const designFilePathResult = parseDesignFilePath(formData.get('designFilePath'));
+		const designFilePathResult = parseOptionalDesignFilePath(formData.get('designFilePath'));
 
 		if (!variantId) {
 			return fail(400, { message: 'Varian wajib dipilih.' });
