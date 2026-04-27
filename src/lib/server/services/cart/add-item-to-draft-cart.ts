@@ -9,6 +9,24 @@ const isSameOptionSet = (left: string[], right: string[]) => {
 	return left.every((value, index) => value === right[index]);
 };
 
+const normalizeFilePath = (filePath?: string | null) => filePath?.trim() ?? '';
+
+export const hasSameCartItemConfiguration = (input: {
+	existingOptionIds: string[];
+	incomingOptionIds: string[];
+	existingFilePath?: string | null;
+	incomingFilePath?: string;
+}) => {
+	const normalizedExistingOptionIds = [...input.existingOptionIds].sort();
+	const normalizedIncomingOptionIds = [...input.incomingOptionIds].sort();
+
+	if (!isSameOptionSet(normalizedExistingOptionIds, normalizedIncomingOptionIds)) {
+		return false;
+	}
+
+	return normalizeFilePath(input.existingFilePath) === normalizeFilePath(input.incomingFilePath);
+};
+
 type AddItemToDraftCartInput = {
 	userId: string;
 	variantId: string;
@@ -17,6 +35,7 @@ type AddItemToDraftCartInput = {
 	variantStock: number;
 	optionIds: string[];
 	optionPriceById: Map<string, number>;
+	designFilePath?: string;
 };
 
 export async function addItemToDraftCart(input: AddItemToDraftCartInput): Promise<void> {
@@ -46,7 +65,8 @@ export async function addItemToDraftCart(input: AddItemToDraftCartInput): Promis
 		const existingLineItems = await tx
 			.select({
 				id: orderItems.id,
-				quantity: orderItems.quantity
+				quantity: orderItems.quantity,
+				filePath: orderItems.filePath
 			})
 			.from(orderItems)
 			.where(and(eq(orderItems.orderId, draftOrderId), eq(orderItems.variantId, input.variantId)));
@@ -75,11 +95,13 @@ export async function addItemToDraftCart(input: AddItemToDraftCartInput): Promis
 			optionIdsByOrderItemId.set(row.orderItemId, list);
 		}
 
-		const normalizedIncomingOptionIds = [...input.optionIds].sort();
-
 		const matchingExistingItem = existingLineItems.find((item) => {
-			const normalizedExistingOptionIds = [...(optionIdsByOrderItemId.get(item.id) ?? [])].sort();
-			return isSameOptionSet(normalizedExistingOptionIds, normalizedIncomingOptionIds);
+			return hasSameCartItemConfiguration({
+				existingOptionIds: optionIdsByOrderItemId.get(item.id) ?? [],
+				incomingOptionIds: input.optionIds,
+				existingFilePath: item.filePath,
+				incomingFilePath: input.designFilePath
+			});
 		});
 
 		if (matchingExistingItem) {
@@ -104,7 +126,8 @@ export async function addItemToDraftCart(input: AddItemToDraftCartInput): Promis
 					orderId: draftOrderId,
 					variantId: input.variantId,
 					quantity: input.quantity,
-					price: input.variantPrice
+					price: input.variantPrice,
+					filePath: input.designFilePath
 				})
 				.returning({ id: orderItems.id });
 

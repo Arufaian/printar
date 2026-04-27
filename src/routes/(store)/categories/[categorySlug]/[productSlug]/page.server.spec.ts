@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const selectMock = vi.hoisted(() => vi.fn());
+const addItemToDraftCartMock = vi.hoisted(() => vi.fn());
+const resolveStoreProductByParamsMock = vi.hoisted(() => vi.fn());
+const normalizeOptionIdsMock = vi.hoisted(() => vi.fn());
 
 vi.mock('$lib/server/db', () => ({
 	db: {
@@ -8,6 +11,29 @@ vi.mock('$lib/server/db', () => ({
 		transaction: vi.fn()
 	}
 }));
+
+vi.mock('$lib/server/services/cart', async () => {
+	const actual = await vi.importActual<typeof import('$lib/server/services/cart')>(
+		'$lib/server/services/cart'
+	);
+
+	return {
+		...actual,
+		addItemToDraftCart: addItemToDraftCartMock
+	};
+});
+
+vi.mock('$lib/server/services/store-product', async () => {
+	const actual = await vi.importActual<typeof import('$lib/server/services/store-product')>(
+		'$lib/server/services/store-product'
+	);
+
+	return {
+		...actual,
+		resolveStoreProductByParams: resolveStoreProductByParamsMock,
+		normalizeOptionIds: normalizeOptionIdsMock
+	};
+});
 
 import { actions } from './+page.server';
 
@@ -58,6 +84,12 @@ const makeEvent = (payload: Record<string, string | string[]>, userId: string | 
 describe('store product addToCart action', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		normalizeOptionIdsMock.mockImplementation((values: FormDataEntryValue[]) =>
+			values
+				.filter((value): value is string => typeof value === 'string')
+				.map((value) => value.trim())
+				.filter((value) => value.length > 0)
+		);
 	});
 
 	it('returns 401 when user is not authenticated', async () => {
@@ -108,5 +140,72 @@ describe('store product addToCart action', () => {
 		expect(output.status).toBe(400);
 		expect(output.data.message).toContain('Jumlah minimal 1');
 		expect(selectMock).not.toHaveBeenCalled();
+	});
+
+	it('returns 400 when design file path is invalid', async () => {
+		const event = makeEvent(
+			{
+				variantId: 'd4db2b09-047e-4adf-a152-50a2955140e1',
+				quantity: '1',
+				designFilePath: 'https://example.com/file.pdf'
+			},
+			'b7f5c31c-6c16-4f91-bcab-35b67cc8cb9b'
+		);
+
+		const result = await actions.addToCart(event);
+		const output = asActionFailureResult(result);
+
+		expect(output.status).toBe(400);
+		expect(output.data.message).toContain('Path file desain tidak valid');
+		expect(resolveStoreProductByParamsMock).not.toHaveBeenCalled();
+		expect(addItemToDraftCartMock).not.toHaveBeenCalled();
+	});
+
+	it('passes design file path into add to cart service', async () => {
+		resolveStoreProductByParamsMock.mockResolvedValueOnce({
+			productRow: { id: '0fa96495-100c-4920-8427-c5ebafec882e' }
+		});
+
+		selectMock
+			.mockImplementationOnce(() => ({
+				from: vi.fn(() => ({
+					where: vi.fn(() => ({
+						limit: vi.fn(async () => [{ id: 'b7f5c31c-6c16-4f91-bcab-35b67cc8cb9b' }])
+					}))
+				}))
+			}))
+			.mockImplementationOnce(() => ({
+				from: vi.fn(() => ({
+					where: vi.fn(() => ({
+						limit: vi.fn(async () => [
+							{ id: 'd4db2b09-047e-4adf-a152-50a2955140e1', price: 12000, stock: 10 }
+						])
+					}))
+				}))
+			}))
+			.mockImplementationOnce(() => ({
+				from: vi.fn(() => ({
+					where: vi.fn(async () => [])
+				}))
+			}));
+
+		addItemToDraftCartMock.mockResolvedValueOnce(undefined);
+
+		const event = makeEvent(
+			{
+				variantId: 'd4db2b09-047e-4adf-a152-50a2955140e1',
+				quantity: '1',
+				designFilePath: 'customer-design/b7f5c31c-6c16-4f91-bcab-35b67cc8cb9b/design-file.pdf'
+			},
+			'b7f5c31c-6c16-4f91-bcab-35b67cc8cb9b'
+		);
+
+		await actions.addToCart(event);
+
+		expect(addItemToDraftCartMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				designFilePath: 'customer-design/b7f5c31c-6c16-4f91-bcab-35b67cc8cb9b/design-file.pdf'
+			})
+		);
 	});
 });
