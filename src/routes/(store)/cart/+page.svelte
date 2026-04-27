@@ -3,16 +3,15 @@
 	import { applyAction, enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import type { SubmitFunction } from '@sveltejs/kit';
+	import {
+		CartEmptyState,
+		CartHeader,
+		CartItemCard,
+		CartSelectAll,
+		CartSummary
+	} from '$lib/components/cart/index.js';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
-	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
-	import { Label } from '$lib/components/ui/label/index.js';
-	import * as Item from '$lib/components/ui/item/index.js';
-	import { Button } from '$lib/components/ui/button/index.js';
-	import { formatCurrency } from '$lib/utils/string.js';
-	import Paperclip from '@lucide/svelte/icons/paperclip';
-	import Minus from '@lucide/svelte/icons/minus';
-	import Plus from '@lucide/svelte/icons/plus';
-	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import type { CartItemData } from '$lib/types/cart';
 	import type { PageProps } from './$types';
 	import { tick } from 'svelte';
@@ -20,25 +19,20 @@
 
 	let { data }: PageProps = $props();
 
-	let cartItems = $state<CartItemData[]>([]);
+	const cartItems = $derived<CartItemData[]>(data.cartItems);
+	const shippingCost = $derived(data.summary.shippingCost);
 
-	let selectedItemIds = $state<string[]>([]);
-	let shippingCost = $state(0);
-	let designFileInput = $state<HTMLInputElement | null>(null);
-	let attachDesignForm = $state<HTMLFormElement | null>(null);
+	let deselectedItemIds = $state<string[]>([]);
+	const selectedItemIds = $derived(
+		cartItems.filter((item) => !deselectedItemIds.includes(item.id)).map((item) => item.id)
+	);
 	let attachDesignItemId = $state('');
 	let attachDesignFilePath = $state('');
 	let isUploadingDesign = $state(false);
 	let uploadingDesignItemId = $state<string | null>(null);
 
 	const MAX_DESIGN_FILE_SIZE_BYTES = 2 * 1024 * 1024;
-
-	$effect(() => {
-		const nextItems: CartItemData[] = data.cartItems;
-		cartItems = [...nextItems];
-		shippingCost = data.summary.shippingCost;
-		selectedItemIds = nextItems.map((item) => item.id);
-	});
+	const categoriesHref = resolve('/categories');
 
 	const formatItemMeta = (item: CartItemData) => {
 		if (item.options.length === 0) return item.variant;
@@ -57,18 +51,20 @@
 	const grandTotal = $derived(selectedSubtotal + (selectedCount > 0 ? shippingCost : 0));
 
 	const toggleSelectAll = (checked: boolean) => {
-		selectedItemIds = checked ? cartItems.map((item) => item.id) : [];
+		deselectedItemIds = checked ? [] : cartItems.map((item) => item.id);
 	};
 
 	const toggleSelectItem = (itemId: string, checked: boolean) => {
 		if (checked) {
-			if (!selectedItemIds.includes(itemId)) {
-				selectedItemIds = [...selectedItemIds, itemId];
+			if (deselectedItemIds.includes(itemId)) {
+				deselectedItemIds = deselectedItemIds.filter((id) => id !== itemId);
 			}
 			return;
 		}
 
-		selectedItemIds = selectedItemIds.filter((id) => id !== itemId);
+		if (!deselectedItemIds.includes(itemId)) {
+			deselectedItemIds = [...deselectedItemIds, itemId];
+		}
 	};
 
 	const getNextQuantity = (item: CartItemData, delta: number) => {
@@ -85,7 +81,8 @@
 	const openAttachDesignPicker = (itemId: string) => {
 		if (isUploadingDesign) return;
 		uploadingDesignItemId = itemId;
-		designFileInput?.click();
+		const input = document.getElementById('cart-design-file-input') as HTMLInputElement | null;
+		input?.click();
 	};
 
 	const handleAttachDesignFileChange = async (event: Event) => {
@@ -138,7 +135,8 @@
 			attachDesignItemId = uploadingDesignItemId;
 			attachDesignFilePath = nextPath;
 			await tick();
-			attachDesignForm?.requestSubmit();
+			const form = document.getElementById('cart-attach-design-form') as HTMLFormElement | null;
+			form?.requestSubmit();
 		} catch (error) {
 			toast.error('Gagal upload file desain. Silakan coba lagi.');
 			console.error(error);
@@ -149,7 +147,7 @@
 		}
 	};
 
-	const enhanceCartAction = () => {
+	const enhanceCartAction: SubmitFunction = () => {
 		return async ({
 			result,
 			update
@@ -182,7 +180,7 @@
 		};
 	};
 
-	const enhanceCheckoutAction = () => {
+	const enhanceCheckoutAction: SubmitFunction = () => {
 		return async ({ result }: { result: { type: string; data?: unknown } }) => {
 			if (result.type === 'failure') {
 				const message =
@@ -204,185 +202,58 @@
 		type="file"
 		accept="image/*,application/pdf"
 		class="hidden"
-		bind:this={designFileInput}
 		onchange={handleAttachDesignFileChange}
 	/>
 	<form
+		id="cart-attach-design-form"
 		method="POST"
 		action="?/attachDesignFile"
 		class="hidden"
 		use:enhance={enhanceCartAction}
-		bind:this={attachDesignForm}
 	>
 		<input type="hidden" name="itemId" value={attachDesignItemId} />
 		<input type="hidden" name="designFilePath" value={attachDesignFilePath} />
 	</form>
 
 	{#if cartItems.length === 0}
-		<div class="mx-auto max-w-xl rounded-xl border border-dashed bg-card p-10 text-center">
-			<h1 class="text-2xl font-semibold">Keranjang kamu masih kosong</h1>
-			<p class="mt-3 text-sm text-muted-foreground">
-				Belum ada produk di keranjangmu. Yuk pilih produk favoritmu dari kategori yang tersedia.
-			</p>
-			<Button class="mt-6" href={resolve('/categories')}>Lanjut Belanja</Button>
-		</div>
+		<CartEmptyState {categoriesHref} />
 	{:else}
 		<div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
 			<div class="rounded-xl bg-card shadow lg:col-span-8">
-				<div class="p-4 md:p-6">
-					<h1 class="text-xl font-semibold md:text-2xl">Keranjang Belanja</h1>
-					<p class="mt-1 text-sm text-muted-foreground">
-						{cartItems.length} item di keranjang kamu
-					</p>
-				</div>
+				<CartHeader itemCount={cartItems.length} />
 
 				<Separator />
 
-				<div class="flex items-center gap-2 p-4 md:px-6">
-					<Checkbox
-						id="select-all-cart-items"
-						checked={isAllSelected}
-						onCheckedChange={(checked) => toggleSelectAll(Boolean(checked))}
-					/>
-					<Label for="select-all-cart-items">Pilih Semua</Label>
-				</div>
+				<CartSelectAll {isAllSelected} onToggleSelectAll={toggleSelectAll} />
 
 				<Separator />
 
 				<div class="space-y-3 p-4 md:p-6">
 					{#each cartItems as item (item.id)}
-						<Item.Root variant="outline">
-							<Checkbox
-								id={`select-${item.id}`}
-								checked={selectedItemIds.includes(item.id)}
-								onCheckedChange={(checked) => toggleSelectItem(item.id, Boolean(checked))}
-							/>
-
-							<Item.Media>
-								<figure class="w-full">
-									<img class="max-w-14 rounded-xl object-cover" src={item.image} alt={item.title} />
-								</figure>
-							</Item.Media>
-
-							<Item.Content>
-								<Item.Title>{item.title}</Item.Title>
-								<Item.Description>{formatItemMeta(item)}</Item.Description>
-								<Item.Description
-									class={item.hasDesignFile ? 'text-emerald-600' : 'text-amber-600'}
-								>
-									{item.hasDesignFile ? 'File desain terlampir' : 'Belum upload file desain'}
-								</Item.Description>
-								<Item.Description class="mt-1 text-foreground">
-									{formatCurrency(item.unitPrice)} / item
-								</Item.Description>
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									class="mt-2 w-fit"
-									onclick={() => openAttachDesignPicker(item.id)}
-									disabled={isUploadingDesign}
-								>
-									<Paperclip class="size-4" />
-									{isUploadingDesign && uploadingDesignItemId === item.id
-										? 'Mengunggah...'
-										: item.hasDesignFile
-											? 'Ganti file desain'
-											: 'Upload file desain'}
-								</Button>
-							</Item.Content>
-
-							<Item.Actions class="items-center gap-2">
-								<div class="flex items-center gap-1">
-									<form method="POST" action="?/updateQuantity" use:enhance={enhanceCartAction}>
-										<input type="hidden" name="itemId" value={item.id} />
-										<input type="hidden" name="quantity" value={getNextQuantity(item, -1)} />
-										<Button
-											type="submit"
-											size="icon-sm"
-											variant="outline"
-											aria-label={`Decrease quantity for ${item.title}`}
-											disabled={item.quantity <= 1}
-										>
-											<Minus />
-										</Button>
-									</form>
-									<span class="w-8 text-center text-sm font-medium">{item.quantity}</span>
-									<form method="POST" action="?/updateQuantity" use:enhance={enhanceCartAction}>
-										<input type="hidden" name="itemId" value={item.id} />
-										<input type="hidden" name="quantity" value={getNextQuantity(item, 1)} />
-										<Button
-											type="submit"
-											size="icon-sm"
-											variant="outline"
-											aria-label={`Increase quantity for ${item.title}`}
-											disabled={item.stock > 0 && item.quantity >= item.stock}
-										>
-											<Plus />
-										</Button>
-									</form>
-								</div>
-								<div class="min-w-28 text-right">
-									<p class="text-sm font-semibold">
-										{formatCurrency(item.unitPrice * item.quantity)}
-									</p>
-									<p class="text-xs text-muted-foreground">Stok: {item.stock}</p>
-								</div>
-								<form method="POST" action="?/removeItem" use:enhance={enhanceCartAction}>
-									<input type="hidden" name="itemId" value={item.id} />
-									<Button
-										type="submit"
-										size="icon-sm"
-										variant="ghost"
-										aria-label={`Remove ${item.title} from cart`}
-									>
-										<Trash2 />
-									</Button>
-								</form>
-							</Item.Actions>
-						</Item.Root>
+						<CartItemCard
+							{item}
+							selected={selectedItemIds.includes(item.id)}
+							{isUploadingDesign}
+							{uploadingDesignItemId}
+							{formatItemMeta}
+							onToggleSelect={toggleSelectItem}
+							onAttachDesign={openAttachDesignPicker}
+							{getNextQuantity}
+							{enhanceCartAction}
+						/>
 					{/each}
 				</div>
 			</div>
 
-			<aside
-				class="rounded-xl bg-card p-4 shadow lg:sticky lg:top-24 lg:col-span-4 lg:h-fit lg:p-6"
-			>
-				<h2 class="text-lg font-semibold">Ringkasan Belanja</h2>
-				<p class="mt-1 text-sm text-muted-foreground">
-					{selectedCount} item{selectedCount > 1 ? 's' : ''} selected
-				</p>
-
-				<div class="mt-5 space-y-3 text-sm">
-					<div class="flex items-center justify-between">
-						<span class="text-muted-foreground">Subtotal</span>
-						<span>{formatCurrency(selectedSubtotal)}</span>
-					</div>
-					<div class="flex items-center justify-between">
-						<span class="text-muted-foreground">Ongkir</span>
-						<span>{selectedCount > 0 ? formatCurrency(shippingCost) : formatCurrency(0)}</span>
-					</div>
-				</div>
-
-				<Separator class="my-4" />
-
-				<div class="flex items-center justify-between">
-					<span class="font-medium">Total</span>
-					<span class="text-lg font-semibold">{formatCurrency(grandTotal)}</span>
-				</div>
-
-				<form method="POST" action="?/checkout" use:enhance={enhanceCheckoutAction}>
-					{#each selectedItemIds as selectedId (selectedId)}
-						<input type="hidden" name="selectedItemIds" value={selectedId} />
-					{/each}
-					<Button class="mt-5 w-full" type="submit" disabled={selectedCount === 0}
-						>Lanjut ke Checkout</Button
-					>
-				</form>
-				<Button variant="outline" class="mt-2 w-full" href={resolve('/categories')}
-					>Lanjut Belanja</Button
-				>
-			</aside>
+			<CartSummary
+				{selectedCount}
+				{selectedSubtotal}
+				{shippingCost}
+				{grandTotal}
+				{selectedItemIds}
+				{enhanceCheckoutAction}
+				{categoriesHref}
+			/>
 		</div>
 	{/if}
 </div>
