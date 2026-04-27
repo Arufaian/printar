@@ -63,11 +63,12 @@
 	</DropdownMenu.Trigger>
 
 	<DropdownMenu.Content class=" mr-8  w-32 ">
-		<DropdownMenu.Item>
-			<User />
-			Profile
-		</DropdownMenu.Item>
-
+		<a href={resolve('/customer/profile')}>
+			<DropdownMenu.Item>
+				<User />
+				Profile
+			</DropdownMenu.Item>
+		</a>
 		<DropdownMenu.Separator />
 
 		<DropdownMenu.Item
