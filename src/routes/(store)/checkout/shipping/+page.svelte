@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { checkoutDraft } from '$lib/features/checkout/state/checkout-draft.svelte';
+	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 	import {
 		Card,
 		CardContent,
@@ -7,6 +8,11 @@
 		CardHeader,
 		CardTitle
 	} from '$lib/components/ui/card';
+	import { Button } from '$lib/components/ui/button';
+	import { toast } from 'svelte-sonner';
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
 </script>
 
 <Card>
@@ -15,26 +21,76 @@
 		<CardDescription>Pilih alamat tujuan pengiriman pesanan Anda.</CardDescription>
 	</CardHeader>
 	<CardContent class="space-y-4 pt-6">
-		{#each checkoutDraft.addresses as address (address.id)}
-			<button
-				type="button"
-				onclick={() => (checkoutDraft.selectedAddressId = address.id)}
-				class={`w-full rounded-lg border p-4 text-left transition-colors ${
-					checkoutDraft.selectedAddressId === address.id ? 'border-primary bg-primary/5' : ''
-				}`}
-			>
-				<div class="flex items-center justify-between gap-3">
-					<p class="font-medium">{address.label}</p>
-					{#if address.isDefault}
-						<span class="text-xs text-muted-foreground">Utama</span>
-					{/if}
-				</div>
-				<p class="mt-1 text-sm text-muted-foreground">{address.recipient} - {address.phone}</p>
-				<p class="mt-2 text-sm leading-relaxed text-muted-foreground">
-					{address.addressLine}, {address.city}
-					{address.postalCode}
+		{#if data.addresses.length === 0}
+			<div class="space-y-3 rounded-lg border border-dashed p-4">
+				<p class="text-sm text-muted-foreground">
+					Belum ada alamat tersimpan. Tambahkan alamat terlebih dahulu untuk melanjutkan checkout.
 				</p>
-			</button>
-		{/each}
+				<Button href={data.manageAddressUrl} variant="outline">Kelola alamat</Button>
+			</div>
+		{:else}
+			{#each data.addresses as address (address.id)}
+				<form
+					method="POST"
+					action="?/selectAddress"
+					use:enhance={() => {
+						return async ({ result, update }) => {
+							if (result.type === 'success') {
+								await update();
+								await invalidateAll();
+								return;
+							}
+
+							if (result.type === 'failure') {
+								const text =
+									typeof result.data?.message === 'string'
+										? result.data.message
+										: 'Gagal memilih alamat pengiriman.';
+								toast.error(text);
+								return;
+							}
+
+							if (result.type === 'redirect') {
+								await invalidateAll();
+								return;
+							}
+						};
+					}}
+				>
+					<input type="hidden" name="orderId" value={data.orderId} />
+					<input type="hidden" name="addressId" value={address.id} />
+
+					<button
+						type="submit"
+						class={`w-full rounded-lg border p-4 text-left transition-colors ${
+							data.selectedAddressId === address.id ? 'border-primary bg-primary/5' : ''
+						}`}
+					>
+						<div class="flex items-center justify-between gap-3">
+							<p class="font-medium">{address.label || 'Tanpa label'}</p>
+							<div class="flex items-center gap-2">
+								{#if address.isDefault}
+									<span class="text-xs text-muted-foreground">Utama</span>
+								{/if}
+								{#if data.selectedAddressId === address.id}
+									<span class="text-xs text-primary">Dipilih</span>
+								{/if}
+							</div>
+						</div>
+						<p class="mt-1 text-sm text-muted-foreground">
+							{address.recipientName || '-'} - {address.phone || '-'}
+						</p>
+						<p class="mt-2 text-sm leading-relaxed text-muted-foreground">
+							{address.addressLine || '-'}, {address.city || '-'}
+							{address.postalCode || '-'}
+						</p>
+					</button>
+				</form>
+			{/each}
+
+			<div class="flex justify-end">
+				<Button href={data.manageAddressUrl} variant="outline">Kelola alamat</Button>
+			</div>
+		{/if}
 	</CardContent>
 </Card>
