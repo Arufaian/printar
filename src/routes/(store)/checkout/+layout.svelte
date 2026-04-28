@@ -14,6 +14,8 @@
 	import { Separator } from '$lib/components/ui/separator';
 	import { checkoutDraft } from '$lib/features/checkout/state/checkout-draft.svelte';
 	import { formatCurrency } from '$lib/utils/string';
+	import { resolve } from '$app/paths';
+	import type { Pathname } from '$app/types';
 
 	let { children } = $props();
 
@@ -28,7 +30,7 @@
 
 	const navigateTo = async (path: string | null) => {
 		if (!path) return;
-		await goto(path);
+		await goto(resolve(path as Pathname));
 	};
 
 	const getStepIconLabel = (stepId: string) => {
@@ -41,7 +43,6 @@
 <div class="container mx-auto px-4 py-8 lg:px-8">
 	<div class="mx-auto max-w-6xl space-y-6">
 		<header class="space-y-2">
-			<p class="text-sm font-medium text-muted-foreground">Checkout</p>
 			<h1 class="text-2xl font-semibold tracking-tight md:text-3xl">Selesaikan Pesanan Anda</h1>
 			<p class="text-sm text-muted-foreground md:text-base">
 				Ikuti setiap langkah untuk memastikan data pengiriman, rincian pesanan, dan pembayaran
@@ -53,7 +54,7 @@
 			<Stepper.Nav class="w-full" orientation="horizontal">
 				{#each checkoutDraft.steps as step (step.id)}
 					<Stepper.Item>
-						<Stepper.Trigger class="flex flex-col items-center">
+						<Stepper.Trigger disabled class="flex flex-col items-center">
 							<Stepper.Indicator>
 								<span class="sr-only">{getStepIconLabel(step.id)}</span>
 								{#if step.id === 'shipping'}
@@ -144,9 +145,7 @@
 						</div>
 					</CardContent>
 					<CardFooter>
-						<Button class="w-full" size="lg" disabled={activeStepId !== 'payment'}>
-							Konfirmasi Pembayaran
-						</Button>
+						<Button class="w-full" size="lg">Konfirmasi Pembayaran</Button>
 					</CardFooter>
 				</Card>
 			</div>
