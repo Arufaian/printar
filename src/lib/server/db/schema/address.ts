@@ -7,7 +7,7 @@ export const addresses = pgTable('addresses', {
 	profileId: uuid('profile_id')
 		.references(() => profiles.id)
 		.notNull(),
-	recepientName: text('recipient_name'),
+	recipientName: text('recipient_name'),
 	label: text('label'),
 	isDefault: boolean('is_default').default(false),
 	addressLine: text('address_line'),
