@@ -1,0 +1,155 @@
+<script lang="ts">
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import * as Stepper from '$lib/components/ui/stepper';
+	import {
+		Card,
+		CardContent,
+		CardDescription,
+		CardFooter,
+		CardHeader,
+		CardTitle
+	} from '$lib/components/ui/card';
+	import { Button } from '$lib/components/ui/button';
+	import { Separator } from '$lib/components/ui/separator';
+	import { checkoutDraft } from '$lib/features/checkout/state/checkout-draft.svelte';
+	import { formatCurrency } from '$lib/utils/string';
+
+	let { children } = $props();
+
+	const activeStepId = $derived(checkoutDraft.getStepFromPathname(page.url.pathname));
+	const activeStepNumber = $derived(checkoutDraft.getStepNumber(activeStepId));
+	const previousPath = $derived(checkoutDraft.getPreviousPath(activeStepId));
+	const nextPath = $derived(checkoutDraft.getNextPath(activeStepId));
+
+	const canProceed = $derived(checkoutDraft.canProceedFromStep(activeStepId));
+	const isPreviousDisabled = $derived(previousPath === null);
+	const isNextDisabled = $derived(nextPath === null || !canProceed);
+
+	const navigateTo = async (path: string | null) => {
+		if (!path) return;
+		await goto(path);
+	};
+
+	const getStepIconLabel = (stepId: string) => {
+		if (stepId === 'shipping') return 'Shipping';
+		if (stepId === 'review') return 'Review';
+		return 'Payment';
+	};
+</script>
+
+<div class="container mx-auto px-4 py-8 lg:px-8">
+	<div class="mx-auto max-w-6xl space-y-6">
+		<header class="space-y-2">
+			<p class="text-sm font-medium text-muted-foreground">Checkout</p>
+			<h1 class="text-2xl font-semibold tracking-tight md:text-3xl">Selesaikan Pesanan Anda</h1>
+			<p class="text-sm text-muted-foreground md:text-base">
+				Ikuti setiap langkah untuk memastikan data pengiriman, rincian pesanan, dan pembayaran
+				terisi dengan benar.
+			</p>
+		</header>
+
+		<Stepper.Root step={activeStepNumber}>
+			<Stepper.Nav class="w-full" orientation="horizontal">
+				{#each checkoutDraft.steps as step (step.id)}
+					<Stepper.Item>
+						<Stepper.Trigger class="flex flex-col items-center">
+							<Stepper.Indicator>
+								<span class="sr-only">{getStepIconLabel(step.id)}</span>
+								{#if step.id === 'shipping'}
+									<svg viewBox="0 0 24 24" fill="none" class="size-4" aria-hidden="true">
+										<path
+											d="M3 7h11v8H3zM14 10h3.5L21 13v2h-7zM7 19a1.5 1.5 0 1 0 0 .01M17 19a1.5 1.5 0 1 0 0 .01"
+											stroke="currentColor"
+											stroke-width="1.8"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+										/>
+									</svg>
+								{:else if step.id === 'review'}
+									<svg viewBox="0 0 24 24" fill="none" class="size-4" aria-hidden="true">
+										<path
+											d="M8 6h13M8 12h13M8 18h13M3 6.5l1.2 1.2L6.8 5.1M3 12.5l1.2 1.2 2.6-2.6M3 18.5l1.2 1.2 2.6-2.6"
+											stroke="currentColor"
+											stroke-width="1.8"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+										/>
+									</svg>
+								{:else}
+									<svg viewBox="0 0 24 24" fill="none" class="size-4" aria-hidden="true">
+										<path
+											d="M3 8.5h18v10H3zM3 12h18M7 16h3"
+											stroke="currentColor"
+											stroke-width="1.8"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+										/>
+									</svg>
+								{/if}
+							</Stepper.Indicator>
+							<div class="my-2 hidden flex-col lg:flex">
+								<Stepper.Title class="text-sm leading-tight md:text-base">
+									{step.title}
+								</Stepper.Title>
+							</div>
+						</Stepper.Trigger>
+						<Stepper.Separator class="lg:left-[calc(60px)]" />
+					</Stepper.Item>
+				{/each}
+			</Stepper.Nav>
+
+			<div class="flex items-center justify-between gap-3">
+				<Stepper.Previous disabled={isPreviousDisabled}>
+					{#snippet child({ props })}
+						<Button {...props} onclick={() => navigateTo(previousPath)}>Sebelumnya</Button>
+					{/snippet}
+				</Stepper.Previous>
+				<p class="text-sm text-muted-foreground">
+					Langkah {activeStepNumber} dari {checkoutDraft.steps.length}:
+					{checkoutDraft.steps[activeStepNumber - 1].title}
+				</p>
+				<Stepper.Next disabled={isNextDisabled}>
+					{#snippet child({ props })}
+						<Button {...props} onclick={() => navigateTo(nextPath)}>Lanjut</Button>
+					{/snippet}
+				</Stepper.Next>
+			</div>
+		</Stepper.Root>
+
+		<div class="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start">
+			<div class="space-y-6 lg:col-span-8">
+				{@render children()}
+			</div>
+
+			<div class="lg:col-span-4">
+				<Card class="lg:sticky lg:top-24">
+					<CardHeader class="space-y-1.5 border-b">
+						<CardTitle>Ringkasan Pesanan</CardTitle>
+						<CardDescription>Total biaya belanja Anda saat ini.</CardDescription>
+					</CardHeader>
+					<CardContent class="space-y-4 pt-6">
+						<div class="flex items-center justify-between text-sm text-muted-foreground">
+							<span>Subtotal</span>
+							<span>{formatCurrency(checkoutDraft.subtotal)}</span>
+						</div>
+						<div class="flex items-center justify-between text-sm text-muted-foreground">
+							<span>Ongkos Kirim</span>
+							<span>{formatCurrency(checkoutDraft.shippingCost)}</span>
+						</div>
+						<Separator />
+						<div class="flex items-center justify-between text-base font-semibold">
+							<span>Total</span>
+							<span>{formatCurrency(checkoutDraft.total)}</span>
+						</div>
+					</CardContent>
+					<CardFooter>
+						<Button class="w-full" size="lg" disabled={activeStepId !== 'payment'}>
+							Konfirmasi Pembayaran
+						</Button>
+					</CardFooter>
+				</Card>
+			</div>
+		</div>
+	</div>
+</div>
