@@ -6,6 +6,7 @@ import { addresses, orderItems, orders } from '$lib/server/db/schema';
 import type { Actions, PageServerLoad } from './$types';
 
 const uuidSchema = z.uuid('ID tidak valid.');
+const COURIER_SHIPPING_COST = 18000;
 const deliveryMethods = [
 	{ id: 'courier', label: 'Diantar ke alamat' },
 	{ id: 'pickup', label: 'Ambil di toko' }
@@ -28,7 +29,8 @@ export const load: PageServerLoad = async (event) => {
 		.select({
 			id: orders.id,
 			addressId: orders.addressId,
-			deliveryMethod: orders.deliveryMethod
+			deliveryMethod: orders.deliveryMethod,
+			shippingCost: orders.shippingCost
 		})
 		.from(orders)
 		.where(and(eq(orders.profileId, user.id), eq(orders.status, 'draft')))
@@ -66,6 +68,7 @@ export const load: PageServerLoad = async (event) => {
 		orderId: draftOrder.id,
 		selectedAddressId: draftOrder.addressId,
 		selectedDeliveryMethod: draftOrder.deliveryMethod,
+		shippingCost: draftOrder.shippingCost,
 		deliveryMethods,
 		addresses: userAddresses,
 		manageAddressUrl: '/customer/addresses'
@@ -178,7 +181,10 @@ export const actions: Actions = {
 
 		await db
 			.update(orders)
-			.set({ deliveryMethod: parsedDeliveryMethod.data })
+			.set({
+				deliveryMethod: parsedDeliveryMethod.data,
+				shippingCost: parsedDeliveryMethod.data === 'courier' ? COURIER_SHIPPING_COST : 0
+			})
 			.where(
 				and(
 					eq(orders.id, parsedOrderId.data),

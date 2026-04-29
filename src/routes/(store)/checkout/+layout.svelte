@@ -23,6 +23,8 @@
 	const activeStepNumber = $derived(checkoutDraft.getStepNumber(activeStepId));
 	const previousPath = $derived(checkoutDraft.getPreviousPath(activeStepId));
 	const nextPath = $derived(checkoutDraft.getNextPath(activeStepId));
+	const shippingCost = $derived(Number(page.data?.shippingCost ?? 0));
+	const total = $derived(checkoutDraft.subtotal + shippingCost);
 
 	const canProceed = $derived.by(() => {
 		if (activeStepId === 'shipping') {
@@ -144,12 +146,12 @@
 						</div>
 						<div class="flex items-center justify-between text-sm text-muted-foreground">
 							<span>Ongkos Kirim</span>
-							<span>{formatCurrency(checkoutDraft.shippingCost)}</span>
+							<span>{formatCurrency(shippingCost)}</span>
 						</div>
 						<Separator />
 						<div class="flex items-center justify-between text-base font-semibold">
 							<span>Total</span>
-							<span>{formatCurrency(checkoutDraft.total)}</span>
+							<span>{formatCurrency(total)}</span>
 						</div>
 					</CardContent>
 					<CardFooter>
