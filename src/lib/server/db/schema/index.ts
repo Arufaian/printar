@@ -11,3 +11,4 @@ export * from './order-items';
 export * from './order-item-options';
 export * from './payment';
 export * from './order-status-logs';
+export * from './checkout-intent';
