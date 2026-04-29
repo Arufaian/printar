@@ -23,8 +23,10 @@
 	const activeStepNumber = $derived(checkoutDraft.getStepNumber(activeStepId));
 	const previousPath = $derived(checkoutDraft.getPreviousPath(activeStepId));
 	const nextPath = $derived(checkoutDraft.getNextPath(activeStepId));
+	const intentId = $derived(String(page.data?.intentId ?? ''));
+	const selectedSubtotal = $derived(Number(page.data?.selectedSubtotal ?? 0));
 	const shippingCost = $derived(Number(page.data?.shippingCost ?? 0));
-	const total = $derived(checkoutDraft.subtotal + shippingCost);
+	const total = $derived(Number(page.data?.grandTotal ?? selectedSubtotal + shippingCost));
 
 	const canProceed = $derived.by(() => {
 		if (activeStepId === 'shipping') {
@@ -40,7 +42,9 @@
 
 	const navigateTo = async (path: string | null) => {
 		if (!path) return;
-		await goto(resolve(path as Pathname));
+		const target = resolve(path as Pathname);
+		const query = intentId ? `?intentId=${encodeURIComponent(intentId)}` : '';
+		await goto(`${target}${query}`);
 	};
 
 	const getStepIconLabel = (stepId: string) => {
@@ -142,7 +146,7 @@
 					<CardContent class="space-y-4 pt-6">
 						<div class="flex items-center justify-between text-sm text-muted-foreground">
 							<span>Subtotal</span>
-							<span>{formatCurrency(checkoutDraft.subtotal)}</span>
+							<span>{formatCurrency(selectedSubtotal)}</span>
 						</div>
 						<div class="flex items-center justify-between text-sm text-muted-foreground">
 							<span>Ongkos Kirim</span>

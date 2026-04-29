@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const selectMock = vi.hoisted(() => vi.fn());
 const updateMock = vi.hoisted(() => vi.fn());
+const getCheckoutIntentSummaryRealtimeMock = vi.hoisted(() => vi.fn());
 
 vi.mock('$lib/server/db', () => ({
 	db: {
@@ -9,6 +10,22 @@ vi.mock('$lib/server/db', () => ({
 		update: updateMock
 	}
 }));
+
+vi.mock('$lib/server/services/checkout-intent', () => {
+	class CheckoutIntentError extends Error {
+		status: number;
+
+		constructor(status: number, message: string) {
+			super(message);
+			this.status = status;
+		}
+	}
+
+	return {
+		CheckoutIntentError,
+		getCheckoutIntentSummaryRealtime: getCheckoutIntentSummaryRealtimeMock
+	};
+});
 
 import { actions, load } from './+page.server';
 
@@ -18,7 +35,9 @@ const ADDRESS_ID = 'f72c73e0-8c29-4d8b-93fd-b48afb9dfc1f';
 
 const makeLoadEvent = (userId: string | null) =>
 	({
-		url: new URL('http://localhost/checkout/shipping'),
+		url: new URL(
+			'http://localhost/checkout/shipping?intentId=82de0b36-c581-4f4b-ae17-a23979878c5f'
+		),
 		locals: {
 			safeGetSession: vi.fn(async () => ({
 				user: userId ? { id: userId } : null
@@ -61,12 +80,22 @@ const asActionFailureResult = (value: unknown) => value as ActionFailureResult;
 describe('checkout shipping page server (address-only)', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		getCheckoutIntentSummaryRealtimeMock.mockResolvedValue({
+			intentId: '82de0b36-c581-4f4b-ae17-a23979878c5f',
+			orderId: ORDER_ID,
+			selectedItemIds: ['item-id'],
+			selectedCount: 1,
+			selectedSubtotal: 10000,
+			shippingCost: 0,
+			grandTotal: 10000
+		});
 	});
 
 	it('redirects unauthenticated users on load', async () => {
 		await expect(load(makeLoadEvent(null))).rejects.toMatchObject({
 			status: 303,
-			location: '/sign-in?redirect=%2Fcheckout%2Fshipping'
+			location:
+				'/sign-in?redirect=%2Fcheckout%2Fshipping%3FintentId%3D82de0b36-c581-4f4b-ae17-a23979878c5f'
 		});
 	});
 
@@ -123,6 +152,7 @@ describe('checkout shipping page server (address-only)', () => {
 			}));
 
 		const result = (await load(makeLoadEvent(USER_ID))) as {
+			intentId: string;
 			orderId: string;
 			selectedAddressId: string | null;
 			selectedDeliveryMethod: string | null;
@@ -132,6 +162,7 @@ describe('checkout shipping page server (address-only)', () => {
 			manageAddressUrl: string;
 		};
 
+		expect(result.intentId).toBe('82de0b36-c581-4f4b-ae17-a23979878c5f');
 		expect(result.orderId).toBe(ORDER_ID);
 		expect(result.selectedAddressId).toBe(ADDRESS_ID);
 		expect(result.selectedDeliveryMethod).toBe('courier');
@@ -143,7 +174,14 @@ describe('checkout shipping page server (address-only)', () => {
 
 	it('rejects unauthenticated selectAddress action', async () => {
 		const result = await actions.selectAddress(
-			makeActionEvent({ orderId: ORDER_ID, addressId: ADDRESS_ID }, null)
+			makeActionEvent(
+				{
+					intentId: '82de0b36-c581-4f4b-ae17-a23979878c5f',
+					orderId: ORDER_ID,
+					addressId: ADDRESS_ID
+				},
+				null
+			)
 		);
 		const output = asActionFailureResult(result);
 
@@ -153,7 +191,10 @@ describe('checkout shipping page server (address-only)', () => {
 
 	it('rejects selectAddress when payload is incomplete', async () => {
 		const result = await actions.selectAddress(
-			makeActionEvent({ orderId: '', addressId: ADDRESS_ID }, USER_ID)
+			makeActionEvent(
+				{ intentId: '82de0b36-c581-4f4b-ae17-a23979878c5f', orderId: '', addressId: ADDRESS_ID },
+				USER_ID
+			)
 		);
 		const output = asActionFailureResult(result);
 
@@ -171,7 +212,14 @@ describe('checkout shipping page server (address-only)', () => {
 		}));
 
 		const result = await actions.selectAddress(
-			makeActionEvent({ orderId: ORDER_ID, addressId: ADDRESS_ID }, USER_ID)
+			makeActionEvent(
+				{
+					intentId: '82de0b36-c581-4f4b-ae17-a23979878c5f',
+					orderId: ORDER_ID,
+					addressId: ADDRESS_ID
+				},
+				USER_ID
+			)
 		);
 		const output = asActionFailureResult(result);
 
@@ -197,7 +245,14 @@ describe('checkout shipping page server (address-only)', () => {
 			}));
 
 		const result = await actions.selectAddress(
-			makeActionEvent({ orderId: ORDER_ID, addressId: ADDRESS_ID }, USER_ID)
+			makeActionEvent(
+				{
+					intentId: '82de0b36-c581-4f4b-ae17-a23979878c5f',
+					orderId: ORDER_ID,
+					addressId: ADDRESS_ID
+				},
+				USER_ID
+			)
 		);
 		const output = asActionFailureResult(result);
 
@@ -228,10 +283,19 @@ describe('checkout shipping page server (address-only)', () => {
 		updateMock.mockImplementationOnce(() => ({ set: setUpdateMock }));
 
 		await expect(
-			actions.selectAddress(makeActionEvent({ orderId: ORDER_ID, addressId: ADDRESS_ID }, USER_ID))
+			actions.selectAddress(
+				makeActionEvent(
+					{
+						intentId: '82de0b36-c581-4f4b-ae17-a23979878c5f',
+						orderId: ORDER_ID,
+						addressId: ADDRESS_ID
+					},
+					USER_ID
+				)
+			)
 		).rejects.toMatchObject({
 			status: 303,
-			location: '/checkout/shipping'
+			location: '/checkout/shipping?intentId=82de0b36-c581-4f4b-ae17-a23979878c5f'
 		});
 
 		expect(updateMock).toHaveBeenCalledTimes(1);
@@ -240,7 +304,10 @@ describe('checkout shipping page server (address-only)', () => {
 
 	it('rejects selectDeliveryMethod when payload is incomplete', async () => {
 		const result = await actions.selectDeliveryMethod(
-			makeActionEvent({ orderId: ORDER_ID, deliveryMethod: '' }, USER_ID)
+			makeActionEvent(
+				{ intentId: '82de0b36-c581-4f4b-ae17-a23979878c5f', orderId: ORDER_ID, deliveryMethod: '' },
+				USER_ID
+			)
 		);
 		const output = asActionFailureResult(result);
 
@@ -250,7 +317,14 @@ describe('checkout shipping page server (address-only)', () => {
 
 	it('rejects selectDeliveryMethod when method is invalid', async () => {
 		const result = await actions.selectDeliveryMethod(
-			makeActionEvent({ orderId: ORDER_ID, deliveryMethod: 'same-day' }, USER_ID)
+			makeActionEvent(
+				{
+					intentId: '82de0b36-c581-4f4b-ae17-a23979878c5f',
+					orderId: ORDER_ID,
+					deliveryMethod: 'same-day'
+				},
+				USER_ID
+			)
 		);
 		const output = asActionFailureResult(result);
 
@@ -268,7 +342,14 @@ describe('checkout shipping page server (address-only)', () => {
 		}));
 
 		const result = await actions.selectDeliveryMethod(
-			makeActionEvent({ orderId: ORDER_ID, deliveryMethod: 'courier' }, USER_ID)
+			makeActionEvent(
+				{
+					intentId: '82de0b36-c581-4f4b-ae17-a23979878c5f',
+					orderId: ORDER_ID,
+					deliveryMethod: 'courier'
+				},
+				USER_ID
+			)
 		);
 		const output = asActionFailureResult(result);
 
@@ -292,11 +373,18 @@ describe('checkout shipping page server (address-only)', () => {
 
 		await expect(
 			actions.selectDeliveryMethod(
-				makeActionEvent({ orderId: ORDER_ID, deliveryMethod: 'pickup' }, USER_ID)
+				makeActionEvent(
+					{
+						intentId: '82de0b36-c581-4f4b-ae17-a23979878c5f',
+						orderId: ORDER_ID,
+						deliveryMethod: 'pickup'
+					},
+					USER_ID
+				)
 			)
 		).rejects.toMatchObject({
 			status: 303,
-			location: '/checkout/shipping'
+			location: '/checkout/shipping?intentId=82de0b36-c581-4f4b-ae17-a23979878c5f'
 		});
 
 		expect(updateMock).toHaveBeenCalledTimes(1);
@@ -319,11 +407,18 @@ describe('checkout shipping page server (address-only)', () => {
 
 		await expect(
 			actions.selectDeliveryMethod(
-				makeActionEvent({ orderId: ORDER_ID, deliveryMethod: 'courier' }, USER_ID)
+				makeActionEvent(
+					{
+						intentId: '82de0b36-c581-4f4b-ae17-a23979878c5f',
+						orderId: ORDER_ID,
+						deliveryMethod: 'courier'
+					},
+					USER_ID
+				)
 			)
 		).rejects.toMatchObject({
 			status: 303,
-			location: '/checkout/shipping'
+			location: '/checkout/shipping?intentId=82de0b36-c581-4f4b-ae17-a23979878c5f'
 		});
 
 		expect(updateMock).toHaveBeenCalledTimes(1);

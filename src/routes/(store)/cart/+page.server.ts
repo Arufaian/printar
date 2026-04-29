@@ -1,9 +1,9 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { and, eq, inArray } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 import { PUBLIC_BUCKET_NAME } from '$env/static/public';
 import { db } from '$lib/server/db';
-import { orderItems, orders } from '$lib/server/db/schema';
+import { orderItems } from '$lib/server/db/schema';
 import {
 	buildCartPayload,
 	CartActionError,
@@ -13,6 +13,10 @@ import {
 	requireDraftItemOwnership,
 	updateCartItemQuantity
 } from '$lib/server/services/cart';
+import {
+	CheckoutIntentError,
+	createOrRefreshCheckoutIntentFromCart
+} from '$lib/server/services/checkout-intent';
 
 export const load: PageServerLoad = async (event) => {
 	const { user } = await event.locals.safeGetSession();
@@ -207,45 +211,29 @@ export const actions: Actions = {
 			return fail(400, { message: 'Pilih minimal satu item untuk checkout.' });
 		}
 
-		const selectedRows = await db
-			.select({
-				itemId: orderItems.id,
-				orderId: orderItems.orderId,
-				filePath: orderItems.filePath
-			})
-			.from(orderItems)
-			.innerJoin(orders, eq(orderItems.orderId, orders.id))
-			.where(
-				and(
-					inArray(orderItems.id, selectedItemIds),
-					eq(orders.profileId, user.id),
-					eq(orders.status, 'draft')
-				)
-			);
-
-		if (selectedRows.length !== selectedItemIds.length) {
-			return fail(404, { message: 'Satu atau lebih item checkout tidak ditemukan.' });
-		}
-
-		const orderIdSet = new Set(
-			selectedRows.map((row) => row.orderId).filter((value): value is string => Boolean(value))
-		);
-		if (orderIdSet.size !== 1) {
-			return fail(400, { message: 'Item checkout harus berasal dari keranjang yang sama.' });
-		}
-
-		const missingDesignFile = selectedRows.some((row) => !(row.filePath?.trim() ?? ''));
-		if (missingDesignFile) {
-			return fail(400, {
-				message: 'Masih ada item yang belum memiliki file desain. Lengkapi dulu sebelum checkout.'
+		try {
+			const { intentId } = await createOrRefreshCheckoutIntentFromCart({
+				userId: user.id,
+				selectedItemIds
 			});
-		}
 
-		const query = new URLSearchParams();
-		for (const itemId of selectedItemIds) {
-			query.append('itemId', itemId);
-		}
+			throw redirect(303, `/checkout/shipping?intentId=${encodeURIComponent(intentId)}`);
+		} catch (err) {
+			if (
+				err &&
+				typeof err === 'object' &&
+				'status' in err &&
+				(err as { status?: number }).status === 303
+			) {
+				throw err;
+			}
 
-		throw redirect(303, `/checkout?${query.toString()}`);
+			if (err instanceof CheckoutIntentError) {
+				return fail(err.status, { message: err.message });
+			}
+
+			console.error('[cart:checkout] unexpected error', err);
+			return fail(500, { message: 'Checkout gagal. Silakan coba lagi.' });
+		}
 	}
 };

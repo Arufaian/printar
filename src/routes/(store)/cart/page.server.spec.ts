@@ -3,6 +3,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const selectMock = vi.hoisted(() => vi.fn());
 const transactionMock = vi.hoisted(() => vi.fn());
 const updateMock = vi.hoisted(() => vi.fn());
+const createOrRefreshCheckoutIntentFromCartMock = vi.hoisted(() => vi.fn());
+const CheckoutIntentErrorMock = vi.hoisted(
+	() =>
+		class CheckoutIntentError extends Error {
+			status: number;
+
+			constructor(status: number, message: string) {
+				super(message);
+				this.status = status;
+			}
+		}
+);
 
 vi.mock('$lib/server/db', () => ({
 	db: {
@@ -10,6 +22,11 @@ vi.mock('$lib/server/db', () => ({
 		transaction: transactionMock,
 		update: updateMock
 	}
+}));
+
+vi.mock('$lib/server/services/checkout-intent', () => ({
+	CheckoutIntentError: CheckoutIntentErrorMock,
+	createOrRefreshCheckoutIntentFromCart: createOrRefreshCheckoutIntentFromCartMock
 }));
 
 import { actions, load } from './+page.server';
@@ -317,7 +334,9 @@ describe('store cart page server load', () => {
 	});
 
 	it('checkout rejects when selected item is not found', async () => {
-		mockCheckoutSelectionQuery([]);
+		createOrRefreshCheckoutIntentFromCartMock.mockRejectedValueOnce(
+			new CheckoutIntentErrorMock(404, 'Satu atau lebih item checkout tidak ditemukan.')
+		);
 
 		const result = await actions.checkout(
 			makeCheckoutEvent({ selectedItemIds: ['item-1'] }, 'b7f5c31c-6c16-4f91-bcab-35b67cc8cb9b')
@@ -329,13 +348,12 @@ describe('store cart page server load', () => {
 	});
 
 	it('checkout rejects when selected item has no design file', async () => {
-		mockCheckoutSelectionQuery([
-			{
-				itemId: 'item-1',
-				orderId: 'order-1',
-				filePath: null
-			}
-		]);
+		createOrRefreshCheckoutIntentFromCartMock.mockRejectedValueOnce(
+			new CheckoutIntentErrorMock(
+				400,
+				'Masih ada item yang belum memiliki file desain. Lengkapi dulu sebelum checkout.'
+			)
+		);
 
 		const result = await actions.checkout(
 			makeCheckoutEvent({ selectedItemIds: ['item-1'] }, 'b7f5c31c-6c16-4f91-bcab-35b67cc8cb9b')
@@ -347,18 +365,10 @@ describe('store cart page server load', () => {
 	});
 
 	it('checkout redirects to /checkout with selected item ids', async () => {
-		mockCheckoutSelectionQuery([
-			{
-				itemId: 'item-1',
-				orderId: 'order-1',
-				filePath: 'customer-design/user-1/design-1.pdf'
-			},
-			{
-				itemId: 'item-2',
-				orderId: 'order-1',
-				filePath: 'customer-design/user-1/design-2.pdf'
-			}
-		]);
+		createOrRefreshCheckoutIntentFromCartMock.mockResolvedValueOnce({
+			intentId: '6c0cceab-5499-4feb-bf57-e8795d4d2f2a',
+			orderId: 'order-1'
+		});
 
 		await expect(
 			actions.checkout(
@@ -369,7 +379,7 @@ describe('store cart page server load', () => {
 			)
 		).rejects.toMatchObject({
 			status: 303,
-			location: '/checkout?itemId=item-1&itemId=item-2'
+			location: '/checkout/shipping?intentId=6c0cceab-5499-4feb-bf57-e8795d4d2f2a'
 		});
 	});
 

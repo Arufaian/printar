@@ -3,6 +3,10 @@ import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '$lib/server/db';
 import { addresses, orderItems, orders } from '$lib/server/db/schema';
+import {
+	CheckoutIntentError,
+	getCheckoutIntentSummaryRealtime
+} from '$lib/server/services/checkout-intent';
 import type { Actions, PageServerLoad } from './$types';
 
 const uuidSchema = z.uuid('ID tidak valid.');
@@ -25,6 +29,24 @@ export const load: PageServerLoad = async (event) => {
 		);
 	}
 
+	const intentId = event.url.searchParams.get('intentId')?.trim() ?? '';
+	const parsedIntentId = uuidSchema.safeParse(intentId);
+
+	if (!parsedIntentId.success) {
+		throw redirect(303, '/cart');
+	}
+
+	let intentSummary: Awaited<ReturnType<typeof getCheckoutIntentSummaryRealtime>>;
+	try {
+		intentSummary = await getCheckoutIntentSummaryRealtime(user.id, parsedIntentId.data);
+	} catch (err) {
+		if (err instanceof CheckoutIntentError) {
+			throw redirect(303, '/cart');
+		}
+
+		throw err;
+	}
+
 	const [draftOrder] = await db
 		.select({
 			id: orders.id,
@@ -33,7 +55,13 @@ export const load: PageServerLoad = async (event) => {
 			shippingCost: orders.shippingCost
 		})
 		.from(orders)
-		.where(and(eq(orders.profileId, user.id), eq(orders.status, 'draft')))
+		.where(
+			and(
+				eq(orders.profileId, user.id),
+				eq(orders.status, 'draft'),
+				eq(orders.id, intentSummary.orderId)
+			)
+		)
 		.limit(1);
 
 	if (!draftOrder) {
@@ -65,6 +93,7 @@ export const load: PageServerLoad = async (event) => {
 		.where(eq(addresses.profileId, user.id));
 
 	return {
+		intentId: intentSummary.intentId,
 		orderId: draftOrder.id,
 		selectedAddressId: draftOrder.addressId,
 		selectedDeliveryMethod: draftOrder.deliveryMethod,
@@ -84,11 +113,27 @@ export const actions: Actions = {
 		}
 
 		const formData = await event.request.formData();
+		const intentId = String(formData.get('intentId') ?? '').trim();
 		const orderId = String(formData.get('orderId') ?? '').trim();
 		const addressId = String(formData.get('addressId') ?? '').trim();
 
-		if (!orderId || !addressId) {
+		if (!intentId || !orderId || !addressId) {
 			return fail(400, { message: 'Data alamat tidak lengkap.' });
+		}
+
+		const parsedIntentId = uuidSchema.safeParse(intentId);
+		if (!parsedIntentId.success) {
+			return fail(400, { message: 'ID checkout tidak valid.' });
+		}
+
+		try {
+			await getCheckoutIntentSummaryRealtime(user.id, parsedIntentId.data);
+		} catch (err) {
+			if (err instanceof CheckoutIntentError) {
+				return fail(404, { message: 'Checkout intent tidak ditemukan.' });
+			}
+
+			throw err;
 		}
 
 		const parsedOrderId = uuidSchema.safeParse(orderId);
@@ -135,7 +180,7 @@ export const actions: Actions = {
 				)
 			);
 
-		throw redirect(303, '/checkout/shipping');
+		throw redirect(303, `/checkout/shipping?intentId=${encodeURIComponent(parsedIntentId.data)}`);
 	},
 	selectDeliveryMethod: async (event) => {
 		const { user } = await event.locals.safeGetSession();
@@ -145,11 +190,27 @@ export const actions: Actions = {
 		}
 
 		const formData = await event.request.formData();
+		const intentId = String(formData.get('intentId') ?? '').trim();
 		const orderId = String(formData.get('orderId') ?? '').trim();
 		const deliveryMethod = String(formData.get('deliveryMethod') ?? '').trim();
 
-		if (!orderId || !deliveryMethod) {
+		if (!intentId || !orderId || !deliveryMethod) {
 			return fail(400, { message: 'Data metode pengiriman tidak lengkap.' });
+		}
+
+		const parsedIntentId = uuidSchema.safeParse(intentId);
+		if (!parsedIntentId.success) {
+			return fail(400, { message: 'ID checkout tidak valid.' });
+		}
+
+		try {
+			await getCheckoutIntentSummaryRealtime(user.id, parsedIntentId.data);
+		} catch (err) {
+			if (err instanceof CheckoutIntentError) {
+				return fail(404, { message: 'Checkout intent tidak ditemukan.' });
+			}
+
+			throw err;
 		}
 
 		const parsedOrderId = uuidSchema.safeParse(orderId);
@@ -193,6 +254,6 @@ export const actions: Actions = {
 				)
 			);
 
-		throw redirect(303, '/checkout/shipping');
+		throw redirect(303, `/checkout/shipping?intentId=${encodeURIComponent(parsedIntentId.data)}`);
 	}
 };

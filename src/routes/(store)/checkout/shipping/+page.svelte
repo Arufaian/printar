@@ -57,6 +57,7 @@
 						};
 					}}
 				>
+					<input type="hidden" name="intentId" value={data.intentId} />
 					<input type="hidden" name="orderId" value={data.orderId} />
 					<input type="hidden" name="addressId" value={address.id} />
 
@@ -129,6 +130,7 @@
 					};
 				}}
 			>
+				<input type="hidden" name="intentId" value={data.intentId} />
 				<input type="hidden" name="orderId" value={data.orderId} />
 				<input type="hidden" name="deliveryMethod" value={method.id} />
 
