@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import midtransClient from 'midtrans-client';
 
 const MIDTRANS_SERVER_KEY = process.env.MIDTRANS_SERVER_KEY;
@@ -113,4 +114,23 @@ export function mapMidtransStatusToOrderStatus(transactionStatus) {
 export function isFinalMidtransStatus(transactionStatus) {
 	const normalized = (transactionStatus ?? '').toLowerCase();
 	return normalized === 'settlement' || normalized === 'expire' || normalized === 'cancel';
+}
+
+/**
+ * @param {{ order_id?: string; status_code?: string; gross_amount?: string; signature_key?: string }} payload
+ */
+export function verifyMidtransSignature(payload) {
+	const orderId = payload.order_id ?? '';
+	const statusCode = payload.status_code ?? '';
+	const grossAmount = payload.gross_amount ?? '';
+	const signatureKey = payload.signature_key ?? '';
+
+	if (!orderId || !statusCode || !grossAmount || !signatureKey) {
+		return false;
+	}
+
+	const raw = `${orderId}${statusCode}${grossAmount}${MIDTRANS_SERVER_KEY}`;
+	const expected = createHash('sha512').update(raw).digest('hex');
+
+	return expected === signatureKey;
 }

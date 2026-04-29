@@ -1,5 +1,6 @@
 export {
 	createSnapTransaction,
 	isFinalMidtransStatus,
-	mapMidtransStatusToOrderStatus
+	mapMidtransStatusToOrderStatus,
+	verifyMidtransSignature
 } from './midtrans.js';
