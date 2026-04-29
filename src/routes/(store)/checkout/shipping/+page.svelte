@@ -94,3 +94,58 @@
 		{/if}
 	</CardContent>
 </Card>
+
+<Card>
+	<CardHeader class="space-y-1.5 border-b">
+		<CardTitle>Metode Pengiriman</CardTitle>
+		<CardDescription>Pilih metode pengiriman untuk pesanan Anda.</CardDescription>
+	</CardHeader>
+	<CardContent class="space-y-4 pt-6">
+		{#each data.deliveryMethods as method (method.id)}
+			<form
+				method="POST"
+				action="?/selectDeliveryMethod"
+				use:enhance={() => {
+					return async ({ result, update }) => {
+						if (result.type === 'success') {
+							await update();
+							await invalidateAll();
+							return;
+						}
+
+						if (result.type === 'failure') {
+							const text =
+								typeof result.data?.message === 'string'
+									? result.data.message
+									: 'Gagal memilih metode pengiriman.';
+							toast.error(text);
+							return;
+						}
+
+						if (result.type === 'redirect') {
+							await invalidateAll();
+							return;
+						}
+					};
+				}}
+			>
+				<input type="hidden" name="orderId" value={data.orderId} />
+				<input type="hidden" name="deliveryMethod" value={method.id} />
+
+				<button
+					type="submit"
+					class={`w-full rounded-lg border p-4 text-left transition-colors ${
+						data.selectedDeliveryMethod === method.id ? 'border-primary bg-primary/5' : ''
+					}`}
+				>
+					<div class="flex items-center justify-between gap-3">
+						<p class="font-medium">{method.label}</p>
+						{#if data.selectedDeliveryMethod === method.id}
+							<span class="text-xs text-primary">Dipilih</span>
+						{/if}
+					</div>
+				</button>
+			</form>
+		{/each}
+	</CardContent>
+</Card>

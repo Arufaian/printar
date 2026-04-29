@@ -6,6 +6,13 @@ import { addresses, orderItems, orders } from '$lib/server/db/schema';
 import type { Actions, PageServerLoad } from './$types';
 
 const uuidSchema = z.uuid('ID tidak valid.');
+const deliveryMethods = [
+	{ id: 'courier', label: 'Diantar ke alamat' },
+	{ id: 'pickup', label: 'Ambil di toko' }
+] as const;
+const deliveryMethodSchema = z.enum(['courier', 'pickup'], {
+	message: 'Metode pengiriman tidak valid.'
+});
 
 export const load: PageServerLoad = async (event) => {
 	const { user } = await event.locals.safeGetSession();
@@ -20,7 +27,8 @@ export const load: PageServerLoad = async (event) => {
 	const [draftOrder] = await db
 		.select({
 			id: orders.id,
-			addressId: orders.addressId
+			addressId: orders.addressId,
+			deliveryMethod: orders.deliveryMethod
 		})
 		.from(orders)
 		.where(and(eq(orders.profileId, user.id), eq(orders.status, 'draft')))
@@ -57,6 +65,8 @@ export const load: PageServerLoad = async (event) => {
 	return {
 		orderId: draftOrder.id,
 		selectedAddressId: draftOrder.addressId,
+		selectedDeliveryMethod: draftOrder.deliveryMethod,
+		deliveryMethods,
 		addresses: userAddresses,
 		manageAddressUrl: '/customer/addresses'
 	};
@@ -114,6 +124,61 @@ export const actions: Actions = {
 		await db
 			.update(orders)
 			.set({ addressId: parsedAddressId.data })
+			.where(
+				and(
+					eq(orders.id, parsedOrderId.data),
+					eq(orders.profileId, user.id),
+					eq(orders.status, 'draft')
+				)
+			);
+
+		throw redirect(303, '/checkout/shipping');
+	},
+	selectDeliveryMethod: async (event) => {
+		const { user } = await event.locals.safeGetSession();
+
+		if (!user) {
+			return fail(401, { message: 'Silakan login terlebih dahulu.' });
+		}
+
+		const formData = await event.request.formData();
+		const orderId = String(formData.get('orderId') ?? '').trim();
+		const deliveryMethod = String(formData.get('deliveryMethod') ?? '').trim();
+
+		if (!orderId || !deliveryMethod) {
+			return fail(400, { message: 'Data metode pengiriman tidak lengkap.' });
+		}
+
+		const parsedOrderId = uuidSchema.safeParse(orderId);
+		const parsedDeliveryMethod = deliveryMethodSchema.safeParse(deliveryMethod);
+
+		if (!parsedOrderId.success) {
+			return fail(400, { message: 'ID order tidak valid.' });
+		}
+
+		if (!parsedDeliveryMethod.success) {
+			return fail(400, { message: 'Metode pengiriman tidak valid.' });
+		}
+
+		const [ownedDraftOrder] = await db
+			.select({ id: orders.id })
+			.from(orders)
+			.where(
+				and(
+					eq(orders.id, parsedOrderId.data),
+					eq(orders.profileId, user.id),
+					eq(orders.status, 'draft')
+				)
+			)
+			.limit(1);
+
+		if (!ownedDraftOrder) {
+			return fail(404, { message: 'Keranjang draft tidak ditemukan.' });
+		}
+
+		await db
+			.update(orders)
+			.set({ deliveryMethod: parsedDeliveryMethod.data })
 			.where(
 				and(
 					eq(orders.id, parsedOrderId.data),

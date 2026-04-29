@@ -24,7 +24,15 @@
 	const previousPath = $derived(checkoutDraft.getPreviousPath(activeStepId));
 	const nextPath = $derived(checkoutDraft.getNextPath(activeStepId));
 
-	const canProceed = $derived(checkoutDraft.canProceedFromStep(activeStepId));
+	const canProceed = $derived.by(() => {
+		if (activeStepId === 'shipping') {
+			const selectedAddressId = page.data?.selectedAddressId;
+			const selectedDeliveryMethod = page.data?.selectedDeliveryMethod;
+			return Boolean(selectedAddressId && selectedDeliveryMethod);
+		}
+
+		return checkoutDraft.canProceedFromStep(activeStepId);
+	});
 	const isPreviousDisabled = $derived(previousPath === null);
 	const isNextDisabled = $derived(nextPath === null || !canProceed);
 

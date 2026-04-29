@@ -87,7 +87,9 @@ describe('checkout shipping page server (address-only)', () => {
 			.mockImplementationOnce(() => ({
 				from: vi.fn(() => ({
 					where: vi.fn(() => ({
-						limit: vi.fn(async () => [{ id: ORDER_ID, addressId: ADDRESS_ID }])
+						limit: vi.fn(async () => [
+							{ id: ORDER_ID, addressId: ADDRESS_ID, deliveryMethod: 'courier' }
+						])
 					}))
 				}))
 			}))
@@ -118,12 +120,16 @@ describe('checkout shipping page server (address-only)', () => {
 		const result = (await load(makeLoadEvent(USER_ID))) as {
 			orderId: string;
 			selectedAddressId: string | null;
+			selectedDeliveryMethod: string | null;
+			deliveryMethods: Array<{ id: string; label: string }>;
 			addresses: Array<{ id: string }>;
 			manageAddressUrl: string;
 		};
 
 		expect(result.orderId).toBe(ORDER_ID);
 		expect(result.selectedAddressId).toBe(ADDRESS_ID);
+		expect(result.selectedDeliveryMethod).toBe('courier');
+		expect(result.deliveryMethods).toHaveLength(2);
 		expect(result.addresses).toHaveLength(1);
 		expect(result.manageAddressUrl).toContain('/customer/addresses');
 	});
@@ -223,5 +229,70 @@ describe('checkout shipping page server (address-only)', () => {
 
 		expect(updateMock).toHaveBeenCalledTimes(1);
 		expect(setUpdateMock).toHaveBeenCalledWith({ addressId: ADDRESS_ID });
+	});
+
+	it('rejects selectDeliveryMethod when payload is incomplete', async () => {
+		const result = await actions.selectDeliveryMethod(
+			makeActionEvent({ orderId: ORDER_ID, deliveryMethod: '' }, USER_ID)
+		);
+		const output = asActionFailureResult(result);
+
+		expect(output.status).toBe(400);
+		expect(output.data.message).toContain('Data metode pengiriman tidak lengkap');
+	});
+
+	it('rejects selectDeliveryMethod when method is invalid', async () => {
+		const result = await actions.selectDeliveryMethod(
+			makeActionEvent({ orderId: ORDER_ID, deliveryMethod: 'same-day' }, USER_ID)
+		);
+		const output = asActionFailureResult(result);
+
+		expect(output.status).toBe(400);
+		expect(output.data.message).toContain('Metode pengiriman tidak valid');
+	});
+
+	it('rejects selectDeliveryMethod when draft order is not owned by user', async () => {
+		selectMock.mockImplementationOnce(() => ({
+			from: vi.fn(() => ({
+				where: vi.fn(() => ({
+					limit: vi.fn(async () => [])
+				}))
+			}))
+		}));
+
+		const result = await actions.selectDeliveryMethod(
+			makeActionEvent({ orderId: ORDER_ID, deliveryMethod: 'courier' }, USER_ID)
+		);
+		const output = asActionFailureResult(result);
+
+		expect(output.status).toBe(404);
+		expect(output.data.message).toContain('Keranjang draft tidak ditemukan');
+	});
+
+	it('updates delivery method and redirects on successful selectDeliveryMethod', async () => {
+		const whereUpdateMock = vi.fn(async () => [{ id: ORDER_ID }]);
+		const setUpdateMock = vi.fn(() => ({ where: whereUpdateMock }));
+
+		selectMock.mockImplementationOnce(() => ({
+			from: vi.fn(() => ({
+				where: vi.fn(() => ({
+					limit: vi.fn(async () => [{ id: ORDER_ID }])
+				}))
+			}))
+		}));
+
+		updateMock.mockImplementationOnce(() => ({ set: setUpdateMock }));
+
+		await expect(
+			actions.selectDeliveryMethod(
+				makeActionEvent({ orderId: ORDER_ID, deliveryMethod: 'pickup' }, USER_ID)
+			)
+		).rejects.toMatchObject({
+			status: 303,
+			location: '/checkout/shipping'
+		});
+
+		expect(updateMock).toHaveBeenCalledTimes(1);
+		expect(setUpdateMock).toHaveBeenCalledWith({ deliveryMethod: 'pickup' });
 	});
 });
