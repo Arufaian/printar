@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
+	import { onMount } from 'svelte';
 	import {
 		Card,
 		CardContent,
@@ -6,12 +8,18 @@
 		CardHeader,
 		CardTitle
 	} from '$lib/components/ui/card';
+	import { Button } from '$lib/components/ui/button';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { formatCurrency } from '$lib/utils/string';
+	import { toast } from 'svelte-sonner';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 	let customerNote = $state('');
+
+	onMount(() => {
+		customerNote = (data as unknown as { customerNote?: string | null }).customerNote ?? '';
+	});
 </script>
 
 <Card>
@@ -105,10 +113,45 @@
 		</CardDescription>
 	</CardHeader>
 	<CardContent class="pt-6">
-		<Textarea
-			bind:value={customerNote}
-			rows={5}
-			placeholder="Contoh: mohon dikirim sebelum jam 15.00, atau gunakan kemasan terpisah"
-		/>
+		<form
+			method="POST"
+			action="?/saveCustomerNote"
+			class="space-y-3"
+			use:enhance={() => {
+				return async ({ result }) => {
+					if (result.type === 'success') {
+						const message =
+							typeof result.data?.text === 'string'
+								? result.data.text
+								: 'Catatan pesanan berhasil disimpan.';
+						customerNote =
+							typeof result.data?.customerNote === 'string' ? result.data.customerNote : '';
+						toast.success(message);
+						return;
+					}
+
+					if (result.type === 'failure') {
+						const message =
+							typeof result.data?.message === 'string'
+								? result.data.message
+								: 'Gagal menyimpan catatan pesanan.';
+						toast.error(message);
+					}
+				};
+			}}
+		>
+			<input type="hidden" name="intentId" value={data.intentId} />
+			<Textarea
+				name="customerNote"
+				bind:value={customerNote}
+				maxlength={200}
+				rows={5}
+				placeholder="Contoh: mohon dikirim sebelum jam 15.00, atau gunakan kemasan terpisah"
+			/>
+			<div class="flex items-center justify-between gap-3">
+				<p class="text-xs text-muted-foreground">{customerNote.length}/200 karakter</p>
+				<Button type="submit" size="sm">Simpan catatan</Button>
+			</div>
+		</form>
 	</CardContent>
 </Card>

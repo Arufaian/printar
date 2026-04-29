@@ -1,4 +1,4 @@
-import { redirect } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import { and, eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '$lib/server/db';
@@ -15,9 +15,10 @@ import {
 	CheckoutIntentError,
 	getCheckoutIntentSummaryRealtime
 } from '$lib/server/services/checkout-intent';
-import type { PageServerLoad } from './$types';
+import type { Actions, PageServerLoad } from './$types';
 
 const uuidSchema = z.uuid('ID checkout tidak valid.');
+const customerNoteSchema = z.string().max(200, 'Catatan maksimal 200 karakter.');
 
 const deliveryMethodLabelById: Record<string, string> = {
 	courier: 'Diantar ke alamat',
@@ -62,7 +63,8 @@ export const load: PageServerLoad = async (event) => {
 			addressLine: addresses.addressLine,
 			city: addresses.city,
 			postalCode: addresses.postalCode,
-			phone: addresses.phone
+			phone: addresses.phone,
+			customerNote: orders.customerNote
 		})
 		.from(orders)
 		.leftJoin(addresses, eq(orders.addressId, addresses.id))
@@ -164,6 +166,7 @@ export const load: PageServerLoad = async (event) => {
 
 	return {
 		intentId: intentSummary.intentId,
+		customerNote: orderRow.customerNote,
 		selectedAddress,
 		selectedDeliveryMethod,
 		selectedDeliveryMethodLabel: selectedDeliveryMethod
@@ -171,4 +174,73 @@ export const load: PageServerLoad = async (event) => {
 			: null,
 		items
 	};
+};
+
+export const actions: Actions = {
+	saveCustomerNote: async (event) => {
+		const { user } = await event.locals.safeGetSession();
+
+		if (!user) {
+			return fail(401, { message: 'Silakan login terlebih dahulu.' });
+		}
+
+		const formData = await event.request.formData();
+		const intentId = String(formData.get('intentId') ?? '').trim();
+		const customerNoteInput = String(formData.get('customerNote') ?? '');
+
+		const parsedIntentId = uuidSchema.safeParse(intentId);
+		if (!parsedIntentId.success) {
+			return fail(400, { message: 'ID checkout tidak valid.' });
+		}
+
+		const normalizedCustomerNote = customerNoteInput.trim();
+		const parsedCustomerNote = customerNoteSchema.safeParse(normalizedCustomerNote);
+		if (!parsedCustomerNote.success) {
+			return fail(400, { message: 'Catatan maksimal 200 karakter.' });
+		}
+
+		let intentSummary: Awaited<ReturnType<typeof getCheckoutIntentSummaryRealtime>>;
+		try {
+			intentSummary = await getCheckoutIntentSummaryRealtime(user.id, parsedIntentId.data);
+		} catch (err) {
+			if (err instanceof CheckoutIntentError) {
+				return fail(404, { message: 'Checkout intent tidak ditemukan.' });
+			}
+
+			throw err;
+		}
+
+		const [ownedDraftOrder] = await db
+			.select({ id: orders.id })
+			.from(orders)
+			.where(
+				and(
+					eq(orders.id, intentSummary.orderId),
+					eq(orders.profileId, user.id),
+					eq(orders.status, 'draft')
+				)
+			)
+			.limit(1);
+
+		if (!ownedDraftOrder) {
+			return fail(404, { message: 'Keranjang draft tidak ditemukan.' });
+		}
+
+		await db
+			.update(orders)
+			.set({ customerNote: parsedCustomerNote.data === '' ? null : parsedCustomerNote.data })
+			.where(
+				and(
+					eq(orders.id, intentSummary.orderId),
+					eq(orders.profileId, user.id),
+					eq(orders.status, 'draft')
+				)
+			);
+
+		return {
+			type: 'success' as const,
+			text: 'Catatan pesanan berhasil disimpan.',
+			customerNote: parsedCustomerNote.data === '' ? null : parsedCustomerNote.data
+		};
+	}
 };
