@@ -158,6 +158,15 @@
 							<p class="text-xs text-muted-foreground">+{order.remainingItemCount} item lainnya</p>
 						{/if}
 					</div>
+
+					<div class="flex justify-end">
+						<a
+							href={resolve('/(store)/customer/orders/[orderId]', { orderId: order.id })}
+							class={buttonVariants({ class: 'w-full sm:w-auto' })}
+						>
+							Lihat Detail
+						</a>
+					</div>
 				</article>
 			{/each}
 		</div>
