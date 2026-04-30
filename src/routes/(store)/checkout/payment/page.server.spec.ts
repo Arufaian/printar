@@ -62,29 +62,57 @@ describe('checkout payment page server', () => {
 			grandTotal: 38000
 		});
 
-		selectMock.mockImplementationOnce(() => ({
-			from: vi.fn(() => ({
-				leftJoin: vi.fn(() => ({
-					where: vi.fn(() => ({
-						limit: vi.fn(async () => [
-							{
-								id: ORDER_ID,
-								status: 'draft',
-								addressId: 'addr-1',
-								deliveryMethod: 'courier',
-								customerNote: 'Catatan test',
-								recipientName: 'Alfian',
-								label: 'Rumah',
-								addressLine: 'Jl. Mawar 1',
-								city: 'Bandung',
-								postalCode: '40123',
-								phone: '0812'
-							}
-						])
+		selectMock
+			.mockImplementationOnce(() => ({
+				from: vi.fn(() => ({
+					leftJoin: vi.fn(() => ({
+						where: vi.fn(() => ({
+							limit: vi.fn(async () => [
+								{
+									id: ORDER_ID,
+									status: 'draft',
+									addressId: 'addr-1',
+									deliveryMethod: 'courier',
+									customerNote: 'Catatan test',
+									recipientName: 'Alfian',
+									label: 'Rumah',
+									addressLine: 'Jl. Mawar 1',
+									city: 'Bandung',
+									postalCode: '40123',
+									phone: '0812'
+								}
+							])
+						}))
 					}))
 				}))
 			}))
-		}));
+			.mockImplementationOnce(() => ({
+				from: vi.fn(() => ({
+					leftJoin: vi.fn(() => ({
+						leftJoin: vi.fn(() => ({
+							where: vi.fn(async () => [
+								{
+									id: 'item-1',
+									quantity: 1,
+									itemPrice: 20000,
+									variantName: 'Merah',
+									variantImage: 'https://example.com/variant.jpg',
+									productName: 'Produk A'
+								}
+							])
+						}))
+					}))
+				}))
+			}))
+			.mockImplementationOnce(() => ({
+				from: vi.fn(() => ({
+					leftJoin: vi.fn(() => ({
+						where: vi.fn(async () => [
+							{ orderItemId: 'item-1', optionPrice: 5000, optionName: 'Extra Cheese' }
+						])
+					}))
+				}))
+			}));
 	});
 
 	it('redirects unauthenticated user to sign-in', async () => {
@@ -120,6 +148,7 @@ describe('checkout payment page server', () => {
 			grandTotal: number;
 			selectedDeliveryMethodLabel: string | null;
 			customerNote: string | null;
+			items: Array<{ name: string; lineTotal: number; image: string | null }>;
 			midtransClientKey: string;
 			midtransScriptUrl: string;
 		};
@@ -129,6 +158,10 @@ describe('checkout payment page server', () => {
 		expect(result.grandTotal).toBe(38000);
 		expect(result.selectedDeliveryMethodLabel).toBe('Diantar ke alamat');
 		expect(result.customerNote).toBe('Catatan test');
+		expect(result.items).toHaveLength(1);
+		expect(result.items[0].name).toBe('Produk A');
+		expect(result.items[0].lineTotal).toBe(25000);
+		expect(result.items[0].image).toBe('https://example.com/variant.jpg');
 		expect(result.midtransClientKey).toBe('Mid-client-sandbox-key');
 		expect(result.midtransScriptUrl).toContain('sandbox.midtrans.com');
 	});

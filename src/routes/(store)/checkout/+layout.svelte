@@ -16,6 +16,7 @@
 	import { formatCurrency } from '$lib/utils/string';
 	import { resolve } from '$app/paths';
 	import type { Pathname } from '$app/types';
+	import { paymentController } from './payment/payment-controller.svelte';
 
 	let { children } = $props();
 
@@ -51,6 +52,21 @@
 		if (stepId === 'shipping') return 'Shipping';
 		if (stepId === 'review') return 'Review';
 		return 'Payment';
+	};
+
+	const nextStepTitle = $derived.by(() => {
+		if (!nextPath) return 'langkah berikutnya';
+		const matchedStep = checkoutDraft.steps.find((step) => step.path === nextPath);
+		return matchedStep?.title ?? 'langkah berikutnya';
+	});
+
+	const handleSummaryAction = async () => {
+		if (activeStepId === 'payment') {
+			await paymentController.createPaymentTransaction(intentId);
+			return;
+		}
+
+		await navigateTo(nextPath);
 	};
 </script>
 
@@ -159,7 +175,43 @@
 						</div>
 					</CardContent>
 					<CardFooter>
-						<Button class="w-full" size="lg">Konfirmasi Pembayaran</Button>
+						<div class="flex flex-col items-center justify-center">
+							<Button
+								class="w-full"
+								size="lg"
+								disabled={activeStepId === 'payment'
+									? paymentController.isCreatingTransaction ||
+										!paymentController.isScriptReady ||
+										paymentController.showOrdersRedirectCta
+									: isNextDisabled}
+								onclick={handleSummaryAction}
+							>
+								{#if activeStepId === 'payment'}
+									{#if paymentController.isCreatingTransaction}
+										Menyiapkan pembayaran...
+									{:else if !paymentController.isScriptReady}
+										Memuat Midtrans...
+									{:else}
+										Bayar Sekarang
+									{/if}
+								{:else}
+									Lanjut ke {nextStepTitle}
+								{/if}
+							</Button>
+							{#if activeStepId === 'payment' && paymentController.showOrdersRedirectCta}
+								<Button
+									variant="outline"
+									class="mt-2 w-full"
+									onclick={() => (window.location.href = '/customer/orders')}
+								>
+									Lanjutkan di Pesanan Saya
+								</Button>
+
+								<p class="mt-3 text-center text-xs text-muted-foreground">
+									Sesi pembayaran sebelumnya tidak bisa dilanjutkan dari halaman ini.
+								</p>
+							{/if}
+						</div>
 					</CardFooter>
 				</Card>
 			</div>
