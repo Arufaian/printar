@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '$lib/server/db';
 import { orderStatusLogs, orders, payments, profiles } from '$lib/server/db/schema';
@@ -14,9 +14,50 @@ const createRequestSchema = z.object({
 	intentId: z.uuid('ID checkout tidak valid.')
 });
 
-const nowIso = () => new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);
+const getClientFacingError = (message: string, code?: string) =>
+	code ? { message, code } : { message };
 
-const getClientFacingError = (message: string) => ({ message });
+const isMidtransDuplicateOrderIdError = (error: unknown) => {
+	if (!error || typeof error !== 'object' || !('midtransErrorMessages' in error)) {
+		return false;
+	}
+
+	const messages = (error as { midtransErrorMessages?: unknown }).midtransErrorMessages;
+	if (!Array.isArray(messages)) {
+		return false;
+	}
+
+	return (
+		messages.some((message) => {
+			if (typeof message !== 'string') return false;
+			const normalized = message.toLowerCase();
+			return normalized.includes('order_id') && normalized.includes('already been taken');
+		}) ||
+		messages.some((message) => {
+			if (typeof message !== 'string') return false;
+			const normalized = message.toLowerCase();
+			return normalized.includes('order_id') && normalized.includes('sudah digunakan');
+		})
+	);
+};
+
+const getReusableSnapPayload = (rawResponse: unknown) => {
+	if (!rawResponse || typeof rawResponse !== 'object') {
+		return null;
+	}
+
+	const token = (rawResponse as Record<string, unknown>).token;
+	if (typeof token !== 'string' || token.length === 0) {
+		return null;
+	}
+
+	const redirectUrl = (rawResponse as Record<string, unknown>).redirect_url;
+
+	return {
+		snapToken: token,
+		redirectUrl: typeof redirectUrl === 'string' ? redirectUrl : null
+	};
+};
 
 export const POST: RequestHandler = async (event) => {
 	const { user } = await event.locals.safeGetSession();
@@ -38,8 +79,11 @@ export const POST: RequestHandler = async (event) => {
 
 	let summary: Awaited<ReturnType<typeof getCheckoutIntentSummaryRealtime>>;
 	try {
-		summary = await getCheckoutIntentSummaryRealtime(user.id, parsedBody.data.intentId);
+		summary = await getCheckoutIntentSummaryRealtime(user.id, parsedBody.data.intentId, {
+			allowedOrderStatuses: ['draft', 'pending_payment']
+		});
 	} catch (error) {
+		console.error(error);
 		if (error instanceof CheckoutIntentError) {
 			return json(getClientFacingError('Checkout intent tidak ditemukan.'), { status: 404 });
 		}
@@ -60,7 +104,13 @@ export const POST: RequestHandler = async (event) => {
 		})
 		.from(orders)
 		.leftJoin(profiles, eq(orders.profileId, profiles.id))
-		.where(and(eq(orders.id, summary.orderId), eq(orders.profileId, user.id), eq(orders.status, 'draft')))
+		.where(
+			and(
+				eq(orders.id, summary.orderId),
+				eq(orders.profileId, user.id),
+				inArray(orders.status, ['draft', 'pending_payment'])
+			)
+		)
 		.limit(1);
 
 	if (!ownedDraftOrder) {
@@ -72,7 +122,7 @@ export const POST: RequestHandler = async (event) => {
 		return json(getClientFacingError('Total pembayaran tidak valid.'), { status: 400 });
 	}
 
-	const midtransOrderId = `${ownedDraftOrder.id}-${nowIso()}`;
+	const midtransOrderId = ownedDraftOrder.id;
 	const callbacks = {
 		finish: `${event.url.origin}/checkout/payment?intentId=${encodeURIComponent(summary.intentId)}&result=finish`,
 		unfinish: `${event.url.origin}/checkout/payment?intentId=${encodeURIComponent(summary.intentId)}&result=unfinish`,
@@ -98,7 +148,44 @@ export const POST: RequestHandler = async (event) => {
 			callbacks
 		});
 	} catch (error) {
+		if (isMidtransDuplicateOrderIdError(error)) {
+			const [existingPayment] = await db
+				.select({ rawResponse: payments.rawResponse })
+				.from(payments)
+				.where(eq(payments.orderId, ownedDraftOrder.id))
+				.limit(1);
+
+			const reusableSnapPayload = getReusableSnapPayload(existingPayment?.rawResponse ?? null);
+			if (reusableSnapPayload) {
+				console.warn('[midtrans:create] duplicate order_id reused existing snap token', {
+					orderId: ownedDraftOrder.id
+				});
+				return json(
+					{
+						...reusableSnapPayload,
+						orderId: ownedDraftOrder.id,
+						reused: true
+					},
+					{ status: 200 }
+				);
+			}
+
+			console.warn('[midtrans:create] duplicate order_id without reusable snap token', {
+				orderId: ownedDraftOrder.id
+			});
+			return json(
+				getClientFacingError(
+					'Transaksi untuk pesanan ini sudah pernah dibuat. Coba beberapa saat lagi.',
+					'MIDTRANS_DUPLICATE_NO_REUSABLE_TOKEN'
+				),
+				{
+					status: 409
+				}
+			);
+		}
+
 		console.error('[midtrans:create] failed to create transaction', error);
+
 		return json(getClientFacingError('Gagal membuat transaksi pembayaran.'), { status: 502 });
 	}
 
@@ -166,6 +253,7 @@ export const POST: RequestHandler = async (event) => {
 	return json({
 		snapToken: midtransResponse.token,
 		redirectUrl: midtransResponse.redirect_url,
-		orderId: ownedDraftOrder.id
+		orderId: ownedDraftOrder.id,
+		reused: false
 	});
 };

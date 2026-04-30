@@ -19,10 +19,19 @@ export type CheckoutIntentSummary = {
 	grandTotal: number;
 };
 
+type OrderStatusFilter = 'draft' | 'pending_payment';
+
+type GetCheckoutIntentSummaryOptions = {
+	allowedOrderStatuses?: OrderStatusFilter[];
+};
+
 export async function getCheckoutIntentSummaryRealtime(
 	userId: string,
-	intentId: string
+	intentId: string,
+	options: GetCheckoutIntentSummaryOptions = {}
 ): Promise<CheckoutIntentSummary> {
+	const allowedOrderStatuses = options.allowedOrderStatuses ?? ['draft'];
+
 	const [intent] = await db
 		.select({
 			id: checkoutIntents.id,
@@ -37,7 +46,7 @@ export async function getCheckoutIntentSummaryRealtime(
 				eq(checkoutIntents.id, intentId),
 				eq(checkoutIntents.profileId, userId),
 				eq(checkoutIntents.status, 'active'),
-				eq(orders.status, 'draft')
+				inArray(orders.status, allowedOrderStatuses)
 			)
 		)
 		.limit(1);

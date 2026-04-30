@@ -22,7 +22,6 @@ vi.mock('$lib/server/services/payment', () => ({
 import { POST } from './+server';
 
 const ORDER_ID = '1f879ee0-89f1-4c3d-9df4-5f3299aa9d7f';
-const MIDTRANS_ORDER_ID = `${ORDER_ID}-20260429123456`;
 
 const makeEvent = (payload: Record<string, unknown>) =>
 	({
@@ -34,7 +33,7 @@ const makeEvent = (payload: Record<string, unknown>) =>
 	}) as unknown as Parameters<typeof POST>[0];
 
 const basePayload = {
-	order_id: MIDTRANS_ORDER_ID,
+	order_id: ORDER_ID,
 	transaction_status: 'settlement',
 	status_code: '200',
 	gross_amount: '38000.00',

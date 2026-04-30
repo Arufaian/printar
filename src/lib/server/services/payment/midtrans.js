@@ -87,7 +87,12 @@ export async function createSnapTransaction(params) {
 		};
 	} catch (error) {
 		console.error('[midtrans] createTransaction failed', error);
-		throw new Error('[midtrans] failed to create transaction.');
+		/** @type {any} */
+		const errAny = error;
+		throw Object.assign(new Error('[midtrans] failed to create transaction.'), {
+			cause: error,
+			midtransErrorMessages: errAny?.ApiResponse?.error_messages ?? null
+		});
 	}
 }
 

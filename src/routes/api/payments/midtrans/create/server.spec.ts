@@ -39,6 +39,16 @@ const USER_ID = 'b7f5c31c-6c16-4f91-bcab-35b67cc8cb9b';
 const INTENT_ID = '82de0b36-c581-4f4b-ae17-a23979878c5f';
 const ORDER_ID = '1f879ee0-89f1-4c3d-9df4-5f3299aa9d7f';
 
+const makeOrderRow = (status: 'draft' | 'pending_payment' = 'draft') => ({
+	id: ORDER_ID,
+	status,
+	profileId: USER_ID,
+	totalPrice: 38000,
+	customerNote: null,
+	deliveryMethod: 'courier',
+	profileName: 'Alfian'
+});
+
 const makeEvent = (payload: unknown, userId: string | null) =>
 	({
 		request: new Request('http://localhost/api/payments/midtrans/create', {
@@ -116,17 +126,7 @@ describe('midtrans create payment API', () => {
 				from: vi.fn(() => ({
 					leftJoin: vi.fn(() => ({
 						where: vi.fn(() => ({
-							limit: vi.fn(async () => [
-								{
-									id: ORDER_ID,
-									status: 'draft',
-									profileId: USER_ID,
-									totalPrice: 38000,
-									customerNote: null,
-									deliveryMethod: 'courier',
-									profileName: 'Alfian'
-								}
-							])
+							limit: vi.fn(async () => [makeOrderRow()])
 						}))
 					}))
 				}))
@@ -161,12 +161,190 @@ describe('midtrans create payment API', () => {
 			snapToken: string;
 			redirectUrl: string;
 			orderId: string;
+			reused: boolean;
 		};
 
 		expect(body.snapToken).toBe('snap-token');
 		expect(body.orderId).toBe(ORDER_ID);
+		expect(body.reused).toBe(false);
 		expect(createSnapTransactionMock).toHaveBeenCalledTimes(1);
 		expect(insertMock).toHaveBeenCalled();
 		expect(updateMock).toHaveBeenCalled();
+	});
+
+	it('returns reused snap token when Midtrans reports duplicate order_id (EN)', async () => {
+		selectMock
+			.mockImplementationOnce(() => ({
+				from: vi.fn(() => ({
+					leftJoin: vi.fn(() => ({
+						where: vi.fn(() => ({
+							limit: vi.fn(async () => [makeOrderRow()])
+						}))
+					}))
+				}))
+			}))
+			.mockImplementationOnce(() => ({
+				from: vi.fn(() => ({
+					where: vi.fn(() => ({
+						limit: vi.fn(async () => [
+							{
+								rawResponse: {
+									token: 'existing-token',
+									redirect_url: 'https://app.sandbox.midtrans.com/snap/v2/vtweb/existing'
+								}
+							}
+						])
+					}))
+				}))
+			}));
+
+		createSnapTransactionMock.mockRejectedValueOnce({
+			midtransErrorMessages: ['transaction_details.order_id has already been taken']
+		});
+
+		const response = await POST(makeEvent({ intentId: INTENT_ID }, USER_ID));
+		expect(response.status).toBe(200);
+
+		const body = (await response.json()) as {
+			snapToken: string;
+			redirectUrl: string | null;
+			orderId: string;
+			reused: boolean;
+		};
+
+		expect(body.snapToken).toBe('existing-token');
+		expect(body.redirectUrl).toBe('https://app.sandbox.midtrans.com/snap/v2/vtweb/existing');
+		expect(body.reused).toBe(true);
+		expect(body.orderId).toBe(ORDER_ID);
+		expect(updateMock).not.toHaveBeenCalled();
+		expect(insertMock).not.toHaveBeenCalled();
+	});
+
+	it('returns reused snap token when Midtrans reports duplicate order_id (ID)', async () => {
+		selectMock
+			.mockImplementationOnce(() => ({
+				from: vi.fn(() => ({
+					leftJoin: vi.fn(() => ({
+						where: vi.fn(() => ({
+							limit: vi.fn(async () => [makeOrderRow()])
+						}))
+					}))
+				}))
+			}))
+			.mockImplementationOnce(() => ({
+				from: vi.fn(() => ({
+					where: vi.fn(() => ({
+						limit: vi.fn(async () => [{ rawResponse: { token: 'existing-token-id' } }])
+					}))
+				}))
+			}));
+
+		createSnapTransactionMock.mockRejectedValueOnce({
+			midtransErrorMessages: ['transaction_details.order_id sudah digunakan']
+		});
+
+		const response = await POST(makeEvent({ intentId: INTENT_ID }, USER_ID));
+		expect(response.status).toBe(200);
+		const body = (await response.json()) as { snapToken: string; reused: boolean };
+		expect(body.snapToken).toBe('existing-token-id');
+		expect(body.reused).toBe(true);
+	});
+
+	it('keeps duplicate retry reachable when order is pending_payment', async () => {
+		selectMock
+			.mockImplementationOnce(() => ({
+				from: vi.fn(() => ({
+					leftJoin: vi.fn(() => ({
+						where: vi.fn(() => ({
+							limit: vi.fn(async () => [makeOrderRow('pending_payment')])
+						}))
+					}))
+				}))
+			}))
+			.mockImplementationOnce(() => ({
+				from: vi.fn(() => ({
+					where: vi.fn(() => ({
+						limit: vi.fn(async () => [{ rawResponse: { token: 'existing-token-pending' } }])
+					}))
+				}))
+			}));
+
+		createSnapTransactionMock.mockRejectedValueOnce({
+			midtransErrorMessages: ['transaction_details.order_id has already been taken']
+		});
+
+		const response = await POST(makeEvent({ intentId: INTENT_ID }, USER_ID));
+		expect(response.status).toBe(200);
+		expect(getCheckoutIntentSummaryRealtimeMock).toHaveBeenCalledWith(USER_ID, INTENT_ID, {
+			allowedOrderStatuses: ['draft', 'pending_payment']
+		});
+		const body = (await response.json()) as { snapToken: string; reused: boolean };
+		expect(body.snapToken).toBe('existing-token-pending');
+		expect(body.reused).toBe(true);
+	});
+
+	it('returns 400 when grandTotal is invalid', async () => {
+		getCheckoutIntentSummaryRealtimeMock.mockResolvedValueOnce({
+			intentId: INTENT_ID,
+			orderId: ORDER_ID,
+			selectedItemIds: ['item-1'],
+			selectedCount: 1,
+			selectedSubtotal: 0,
+			shippingCost: 0,
+			grandTotal: 0
+		});
+
+		selectMock.mockImplementationOnce(() => ({
+			from: vi.fn(() => ({
+				leftJoin: vi.fn(() => ({
+					where: vi.fn(() => ({
+						limit: vi.fn(async () => [
+							{
+								id: ORDER_ID,
+								status: 'draft',
+								profileId: USER_ID,
+								totalPrice: 0,
+								customerNote: null,
+								deliveryMethod: 'courier',
+								profileName: 'Alfian'
+							}
+						])
+					}))
+				}))
+			}))
+		}));
+
+		const response = await POST(makeEvent({ intentId: INTENT_ID }, USER_ID));
+		expect(response.status).toBe(400);
+		expect(createSnapTransactionMock).not.toHaveBeenCalled();
+	});
+
+	it('returns 409 when duplicate order_id has no reusable token', async () => {
+		selectMock
+			.mockImplementationOnce(() => ({
+				from: vi.fn(() => ({
+					leftJoin: vi.fn(() => ({
+						where: vi.fn(() => ({
+							limit: vi.fn(async () => [makeOrderRow()])
+						}))
+					}))
+				}))
+			}))
+			.mockImplementationOnce(() => ({
+				from: vi.fn(() => ({
+					where: vi.fn(() => ({
+						limit: vi.fn(async () => [{ rawResponse: {} }])
+					}))
+				}))
+			}));
+
+		createSnapTransactionMock.mockRejectedValueOnce({
+			midtransErrorMessages: ['transaction_details.order_id has already been taken']
+		});
+
+		const response = await POST(makeEvent({ intentId: INTENT_ID }, USER_ID));
+		expect(response.status).toBe(409);
+		const body = (await response.json()) as { message: string; code: string };
+		expect(body.code).toBe('MIDTRANS_DUPLICATE_NO_REUSABLE_TOKEN');
 	});
 });

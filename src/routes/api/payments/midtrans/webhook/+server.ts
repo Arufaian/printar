@@ -21,8 +21,7 @@ const webhookSchema = z.object({
 const paymentStatusSchema = z.enum(['pending', 'settlement', 'expire', 'cancel']);
 
 function resolveInternalOrderId(midtransOrderId: string): string | null {
-	const internalOrderId = midtransOrderId.replace(/-\d{14}$/, '');
-	return z.uuid().safeParse(internalOrderId).success ? internalOrderId : null;
+	return z.uuid().safeParse(midtransOrderId).success ? midtransOrderId : null;
 }
 
 function mapTransactionStatusToPaymentStatus(transactionStatus: string) {

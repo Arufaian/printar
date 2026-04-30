@@ -203,6 +203,7 @@ export const actions: Actions = {
 		try {
 			intentSummary = await getCheckoutIntentSummaryRealtime(user.id, parsedIntentId.data);
 		} catch (err) {
+			console.error(err);
 			if (err instanceof CheckoutIntentError) {
 				return fail(404, { message: 'Checkout intent tidak ditemukan.' });
 			}
