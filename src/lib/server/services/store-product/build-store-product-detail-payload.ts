@@ -108,6 +108,8 @@ export async function buildStoreProductDetailPayload(params: StoreParams) {
 	const normalizedProductSlug =
 		(productRow.slug ?? '').trim() || generateSlug(productRow.name ?? '') || productRow.id;
 
+	const firstAvailableVariant = mappedVariants.find((variant) => variant.stock > 0);
+
 	return {
 		category: {
 			name: categoryRow.name ?? 'Kategori',
@@ -122,6 +124,6 @@ export async function buildStoreProductDetailPayload(params: StoreParams) {
 		variants: mappedVariants,
 		optionGroups: mappedOptionGroups,
 		gallery,
-		defaultVariantId: mappedVariants[0]?.id ?? null
+		defaultVariantId: firstAvailableVariant?.id ?? mappedVariants[0]?.id ?? null
 	};
 }

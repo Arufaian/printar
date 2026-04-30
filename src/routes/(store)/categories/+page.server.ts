@@ -1,7 +1,7 @@
-import { and, count, inArray, isNotNull, isNull } from 'drizzle-orm';
+import { and, countDistinct, eq, gt, inArray, isNotNull, isNull } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
-import { categories, products } from '$lib/server/db/schema';
+import { categories, products, variants } from '$lib/server/db/schema';
 import { generateSlug } from '$lib/utils/string';
 
 export const load: PageServerLoad = async () => {
@@ -22,14 +22,16 @@ export const load: PageServerLoad = async () => {
 	const countRows = await db
 		.select({
 			categoryId: products.categoryId,
-			totalProducts: count(products.id)
+			totalProducts: countDistinct(products.id)
 		})
 		.from(products)
+		.innerJoin(variants, eq(variants.productId, products.id))
 		.where(
 			and(
 				isNull(products.deletedAt),
 				isNotNull(products.categoryId),
-				inArray(products.categoryId, categoryIds)
+				inArray(products.categoryId, categoryIds),
+				gt(variants.stock, 0)
 			)
 		)
 		.groupBy(products.categoryId);

@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, desc, eq, exists, gt, inArray, isNull } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
@@ -28,7 +28,19 @@ export const load: PageServerLoad = async ({ params }) => {
 			description: products.description
 		})
 		.from(products)
-		.where(and(eq(products.categoryId, categoryRow.id), isNull(products.deletedAt)))
+		.where(
+			and(
+				eq(products.categoryId, categoryRow.id),
+				isNull(products.deletedAt),
+				exists(
+					db
+						.select({ id: variants.id })
+						.from(variants)
+						.where(and(eq(variants.productId, products.id), gt(variants.stock, 0)))
+						.limit(1)
+				)
+			)
+		)
 		.orderBy(desc(products.createdAt));
 
 	const activeProductRows = productRows.filter((product) => product.id);
@@ -43,7 +55,7 @@ export const load: PageServerLoad = async ({ params }) => {
 						imgUrl: variants.imgUrl
 					})
 					.from(variants)
-					.where(inArray(variants.productId, activeProductIds))
+					.where(and(inArray(variants.productId, activeProductIds), gt(variants.stock, 0)))
 			: [];
 
 	const lowestVariantByProductId = new Map<string, { price: number; imgUrl: string | null }>();

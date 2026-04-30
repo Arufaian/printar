@@ -86,6 +86,11 @@
 	);
 
 	const selectVariant = (variantId: string) => {
+		const targetVariant = data.variants.find((variant) => variant.id === variantId);
+		if (!targetVariant || targetVariant.stock <= 0) {
+			return;
+		}
+
 		selectedVariantId = variantId;
 
 		const imageIndex = data.gallery.findIndex((image) => image.variantId === variantId);
@@ -119,7 +124,6 @@
 
 	const increaseQuantity = () => {
 		if (availableStock <= 0) {
-			quantity += 1;
 			return;
 		}
 
@@ -398,13 +402,19 @@
 								<button
 									type="button"
 									onclick={() => selectVariant(variant.id)}
+									disabled={variant.stock <= 0}
 									class={`rounded-md border px-3 py-2 text-sm transition ${
 										selectedVariant?.id === variant.id
 											? 'border-primary bg-primary/10 text-primary'
-											: 'border-border hover:border-primary/50'
+											: variant.stock <= 0
+												? 'cursor-not-allowed border-border bg-muted/40 text-muted-foreground opacity-70'
+												: 'border-border hover:border-primary/50'
 									}`}
 								>
 									{variant.name}
+									{#if variant.stock <= 0}
+										<span class="ml-2 text-xs text-muted-foreground">Habis</span>
+									{/if}
 								</button>
 							{/each}
 						</div>

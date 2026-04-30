@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const selectMock = vi.hoisted(() => vi.fn());
 const updateMock = vi.hoisted(() => vi.fn());
 const insertMock = vi.hoisted(() => vi.fn());
+const transactionMock = vi.hoisted(() => vi.fn());
 const verifyMidtransSignatureMock = vi.hoisted(() => vi.fn());
 const mapMidtransStatusToOrderStatusMock = vi.hoisted(() => vi.fn());
 
@@ -10,7 +11,8 @@ vi.mock('$lib/server/db', () => ({
 	db: {
 		select: selectMock,
 		update: updateMock,
-		insert: insertMock
+		insert: insertMock,
+		transaction: transactionMock
 	}
 }));
 
@@ -46,6 +48,13 @@ describe('midtrans webhook API', () => {
 		vi.clearAllMocks();
 		verifyMidtransSignatureMock.mockReturnValue(true);
 		mapMidtransStatusToOrderStatusMock.mockReturnValue('paid');
+		transactionMock.mockImplementation(async (callback: (tx: unknown) => Promise<unknown>) =>
+			callback({
+				select: selectMock,
+				update: updateMock,
+				insert: insertMock
+			})
+		);
 	});
 
 	it('rejects invalid signature', async () => {
@@ -69,19 +78,32 @@ describe('midtrans webhook API', () => {
 						limit: vi.fn(async () => [{ id: 'payment-1' }])
 					}))
 				}))
+			}))
+			.mockImplementationOnce(() => ({
+				from: vi.fn(() => ({
+					where: vi.fn(async () => [{ variantId: 'variant-1', quantity: 2 }])
+				}))
 			}));
 
 		const updateWhereMock = vi.fn(async () => [{ id: 'payment-1' }]);
+		const updateReturningMock = vi.fn(async () => [{ id: 'variant-1' }]);
+		const updateSetWithReturningMock = vi.fn(() => ({
+			where: vi.fn(() => ({ returning: updateReturningMock }))
+		}));
 		const updateSetMock = vi.fn(() => ({ where: updateWhereMock }));
-		updateMock.mockImplementation(() => ({ set: updateSetMock }));
+		updateMock
+			.mockImplementationOnce(() => ({ set: updateSetMock }))
+			.mockImplementationOnce(() => ({ set: updateSetWithReturningMock }))
+			.mockImplementationOnce(() => ({ set: updateSetMock }));
 
 		const insertValuesMock = vi.fn(async () => [{ id: 'log-1' }]);
 		insertMock.mockImplementation(() => ({ values: insertValuesMock }));
 
 		const response = await POST(makeEvent(basePayload));
 		expect(response.status).toBe(200);
-		expect(updateMock).toHaveBeenCalled();
+		expect(updateMock).toHaveBeenCalledTimes(3);
 		expect(insertMock).toHaveBeenCalledTimes(1);
+		expect(updateReturningMock).toHaveBeenCalledTimes(1);
 	});
 
 	it('maps cancel to draft', async () => {
@@ -104,14 +126,16 @@ describe('midtrans webhook API', () => {
 
 		const updateWhereMock = vi.fn(async () => [{ id: 'payment-1' }]);
 		const updateSetMock = vi.fn(() => ({ where: updateWhereMock }));
-		updateMock.mockImplementation(() => ({ set: updateSetMock }));
+		updateMock
+			.mockImplementationOnce(() => ({ set: updateSetMock }))
+			.mockImplementationOnce(() => ({ set: updateSetMock }));
 
 		const insertValuesMock = vi.fn(async () => [{ id: 'log-1' }]);
 		insertMock.mockImplementation(() => ({ values: insertValuesMock }));
 
 		const response = await POST(makeEvent({ ...basePayload, transaction_status: 'cancel' }));
 		expect(response.status).toBe(200);
-		expect(updateMock).toHaveBeenCalled();
+		expect(updateMock).toHaveBeenCalledTimes(2);
 	});
 
 	it('refreshes raw_response on duplicate callback without status change', async () => {
@@ -134,7 +158,7 @@ describe('midtrans webhook API', () => {
 
 		const updateWhereMock = vi.fn(async () => [{ id: 'payment-1' }]);
 		const updateSetMock = vi.fn(() => ({ where: updateWhereMock }));
-		updateMock.mockImplementation(() => ({ set: updateSetMock }));
+		updateMock.mockImplementationOnce(() => ({ set: updateSetMock }));
 
 		const response = await POST(makeEvent(basePayload));
 		expect(response.status).toBe(200);
@@ -161,13 +185,62 @@ describe('midtrans webhook API', () => {
 
 		const updateWhereMock = vi.fn(async () => [{ id: ORDER_ID }]);
 		const updateSetMock = vi.fn(() => ({ where: updateWhereMock }));
-		updateMock.mockImplementation(() => ({ set: updateSetMock }));
+		const updateReturningMock = vi.fn(async () => [{ id: 'variant-1' }]);
+		const updateSetWithReturningMock = vi.fn(() => ({
+			where: vi.fn(() => ({ returning: updateReturningMock }))
+		}));
+		updateMock
+			.mockImplementationOnce(() => ({ set: updateSetWithReturningMock }))
+			.mockImplementationOnce(() => ({ set: updateSetMock }));
 
 		const insertValuesMock = vi.fn(async () => [{ id: 'payment-1' }]);
 		insertMock.mockImplementation(() => ({ values: insertValuesMock }));
 
+		selectMock.mockImplementationOnce(() => ({
+			from: vi.fn(() => ({
+				where: vi.fn(async () => [{ variantId: 'variant-1', quantity: 1 }])
+			}))
+		}));
+
 		const response = await POST(makeEvent(basePayload));
 		expect(response.status).toBe(200);
 		expect(insertMock).toHaveBeenCalled();
+	});
+
+	it('blocks settlement when stock is insufficient', async () => {
+		selectMock
+			.mockImplementationOnce(() => ({
+				from: vi.fn(() => ({
+					where: vi.fn(() => ({
+						limit: vi.fn(async () => [{ id: ORDER_ID, status: 'pending_payment' }])
+					}))
+				}))
+			}))
+			.mockImplementationOnce(() => ({
+				from: vi.fn(() => ({
+					where: vi.fn(() => ({
+						limit: vi.fn(async () => [{ id: 'payment-1' }])
+					}))
+				}))
+			}))
+			.mockImplementationOnce(() => ({
+				from: vi.fn(() => ({
+					where: vi.fn(async () => [{ variantId: 'variant-1', quantity: 3 }])
+				}))
+			}));
+
+		const updateWhereMock = vi.fn(async () => [{ id: 'payment-1' }]);
+		const updateSetMock = vi.fn(() => ({ where: updateWhereMock }));
+		const updateReturningMock = vi.fn(async () => []);
+		const updateSetWithReturningMock = vi.fn(() => ({
+			where: vi.fn(() => ({ returning: updateReturningMock }))
+		}));
+		updateMock
+			.mockImplementationOnce(() => ({ set: updateSetMock }))
+			.mockImplementationOnce(() => ({ set: updateSetWithReturningMock }));
+
+		const response = await POST(makeEvent(basePayload));
+		expect(response.status).toBe(409);
+		expect(updateReturningMock).toHaveBeenCalledTimes(1);
 	});
 });
