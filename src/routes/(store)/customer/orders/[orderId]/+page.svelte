@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { invalidateAll } from '$app/navigation';
+	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { Badge } from '$lib/components/ui/badge';
 	import { buttonVariants } from '$lib/components/ui/button';
@@ -11,6 +13,7 @@
 	} from '$lib/components/ui/card';
 	import { Separator } from '$lib/components/ui/separator';
 	import * as Stepper from '$lib/components/ui/stepper';
+	import { paymentController } from '$lib/features/payment/payment-controller.svelte';
 	import type { OrderDetailData } from '$lib/types/order-detail';
 	import { formatCurrency } from '$lib/utils/string';
 	import type { PageData } from './$types';
@@ -18,6 +21,18 @@
 	let { data }: { data: PageData } = $props();
 	const order = $derived(data.order as OrderDetailData);
 	const activeTimelineStep = $derived(order.timeline.length);
+	const canPay = $derived(Boolean(data.canPay));
+
+	onMount(() => {
+		paymentController.configure({
+			midtransScriptUrl: data.midtransScriptUrl,
+			midtransClientKey: data.midtransClientKey,
+			onSuccess: async () => {
+				await invalidateAll();
+			}
+		});
+		paymentController.loadSnapScript();
+	});
 
 	const formatDateTime = (value: string | null) => {
 		if (!value) return '-';
@@ -162,6 +177,29 @@
 						<span>{formatCurrency(order.grandTotal)}</span>
 					</div>
 				</CardContent>
+				{#if canPay}
+					<div class="px-6 pb-6">
+						<button
+							type="button"
+							class={buttonVariants({ class: 'w-full' })}
+							disabled={paymentController.isCreatingTransaction || !paymentController.isScriptReady}
+							onclick={() => paymentController.createPaymentTransactionByOrder(order.id)}
+						>
+							{#if paymentController.isCreatingTransaction}
+								Menyiapkan pembayaran...
+							{:else if !paymentController.isScriptReady}
+								Memuat Midtrans...
+							{:else}
+								Bayar Sekarang
+							{/if}
+						</button>
+						{#if paymentController.showOrdersRedirectCta}
+							<p class="mt-3 text-center text-xs text-muted-foreground">
+								Sesi pembayaran sebelumnya tidak bisa dilanjutkan dari halaman ini.
+							</p>
+						{/if}
+					</div>
+				{/if}
 			</Card>
 
 			<Card>

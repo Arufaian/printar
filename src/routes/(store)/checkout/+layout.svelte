@@ -62,7 +62,7 @@
 
 	const handleSummaryAction = async () => {
 		if (activeStepId === 'payment') {
-			await paymentController.createPaymentTransaction(intentId);
+			await paymentController.createPaymentTransactionByIntent(intentId);
 			return;
 		}
 

@@ -1,4 +1,5 @@
 import { error, redirect } from '@sveltejs/kit';
+import { PUBLIC_MIDTRANS_CLIENT_KEY } from '$env/static/public';
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import {
@@ -225,6 +226,12 @@ export const load: PageServerLoad = async (event) => {
 	};
 
 	return {
-		order: detail
+		order: detail,
+		canPay: status === 'pending_payment',
+		midtransClientKey: PUBLIC_MIDTRANS_CLIENT_KEY,
+		midtransScriptUrl:
+			process.env.MIDTRANS_IS_PRODUCTION === 'true'
+				? 'https://app.midtrans.com/snap/snap.js'
+				: 'https://app.sandbox.midtrans.com/snap/snap.js'
 	};
 };
