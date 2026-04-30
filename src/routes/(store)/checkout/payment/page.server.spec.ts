@@ -132,6 +132,17 @@ describe('checkout payment page server', () => {
 		});
 	});
 
+	it('redirects to home when result=finish is present', async () => {
+		await expect(
+			load(
+				makeEvent(USER_ID, `http://localhost/checkout/payment?intentId=${INTENT_ID}&result=finish`)
+			)
+		).rejects.toMatchObject({
+			status: 303,
+			location: '/'
+		});
+	});
+
 	it('redirects to cart when intent is invalid', async () => {
 		await expect(
 			load(makeEvent(USER_ID, 'http://localhost/checkout/payment?intentId=invalid-id'))

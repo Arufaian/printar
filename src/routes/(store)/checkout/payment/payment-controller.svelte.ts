@@ -1,4 +1,6 @@
 import { toast } from 'svelte-sonner';
+import { resolve } from '$app/paths';
+import { goto, invalidateAll } from '$app/navigation';
 import {
 	getCreatePaymentErrorMessage,
 	getCreatePaymentInfoMessage,
@@ -44,8 +46,10 @@ const openSnapPopup = (snapToken: string) => {
 	}
 
 	snapWindow.snap.pay(snapToken, {
-		onSuccess: () => {
+		onSuccess: async () => {
 			toast.success('Pembayaran berhasil. Menunggu sinkronisasi status pesanan.');
+			await invalidateAll();
+			await goto(resolve('/'));
 		},
 		onPending: () => {
 			toast.info(

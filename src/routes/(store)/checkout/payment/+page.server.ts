@@ -36,6 +36,12 @@ export const load: PageServerLoad = async (event) => {
 	}
 
 	const intentId = event.url.searchParams.get('intentId')?.trim() ?? '';
+	const result = event.url.searchParams.get('result')?.trim() ?? '';
+
+	if (result === 'finish') {
+		throw redirect(303, '/');
+	}
+
 	const parsedIntentId = uuidSchema.safeParse(intentId);
 	if (!parsedIntentId.success) {
 		throw redirect(303, '/cart');
