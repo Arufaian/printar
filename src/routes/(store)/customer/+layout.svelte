@@ -5,15 +5,13 @@
 	import * as Item from '$lib/components/ui/item/index.js';
 	import * as Avatar from '$lib/components/ui/avatar/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
-	import { resolve } from '$app/paths';
-	import type { Pathname } from '$app/types';
 
 	let { children, data } = $props();
 
 	type CustomerNavItem = {
 		label: string;
 		description: string;
-		href: string;
+		href: `/${string}`;
 		icon: LucideIcon;
 	};
 
@@ -81,7 +79,7 @@
 							{#each navItems as item (item.href)}
 								<Item.Root class={isActivePath(item.href) ? 'bg-primary/20' : ''} size="sm">
 									{#snippet child({ props })}
-										<a href={resolve(item.href as Pathname)} {...props}>
+										<a href={item.href} {...props}>
 											<Item.Media variant="icon">
 												<item.icon class="size-4" />
 											</Item.Media>

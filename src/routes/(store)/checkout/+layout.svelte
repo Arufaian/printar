@@ -14,8 +14,6 @@
 	import { Separator } from '$lib/components/ui/separator';
 	import { checkoutDraft } from '$lib/features/checkout/state/checkout-draft.svelte';
 	import { formatCurrency } from '$lib/utils/string';
-	import { resolve } from '$app/paths';
-	import type { Pathname } from '$app/types';
 	import { paymentController } from './payment/payment-controller.svelte';
 
 	let { children } = $props();
@@ -43,9 +41,8 @@
 
 	const navigateTo = async (path: string | null) => {
 		if (!path) return;
-		const target = resolve(path as Pathname);
 		const query = intentId ? `?intentId=${encodeURIComponent(intentId)}` : '';
-		await goto(`${target}${query}`);
+		await goto(`${path}${query}`);
 	};
 
 	const getStepIconLabel = (stepId: string) => {
