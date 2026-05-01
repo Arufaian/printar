@@ -110,11 +110,15 @@ describe('customer addresses page server', () => {
 				where: vi.fn(async () => [
 					{
 						id: 'f72c73e0-8c29-4d8b-93fd-b48afb9dfc1f',
+						recipientName: 'Alfian Pratama',
+						label: 'Rumah',
+						isDefault: true,
 						addressLine: 'Jl. Mawar 1',
 						city: 'Bandung',
 						postalCode: '40123',
 						phone: '+6281212345678',
-						createdAt: new Date('2026-01-01T00:00:00Z')
+						createdAt: new Date('2026-01-01T00:00:00Z'),
+						updatedAt: new Date('2026-01-02T00:00:00Z')
 					}
 				])
 			}))
@@ -134,6 +138,9 @@ describe('customer addresses page server', () => {
 		const result = await actions.upsert(
 			makeUpsertEvent(
 				{
+					recipientName: '',
+					label: '',
+					isDefault: 'false',
 					addressLine: 'Jln',
 					city: '',
 					postalCode: '12',
@@ -154,6 +161,9 @@ describe('customer addresses page server', () => {
 		const result = await actions.upsert(
 			makeUpsertEvent(
 				{
+					recipientName: 'Alfian Pratama',
+					label: 'Rumah',
+					isDefault: 'false',
 					addressLine: 'Jl. Melati No 10',
 					city: 'Jakarta',
 					postalCode: '12345',
@@ -179,6 +189,9 @@ describe('customer addresses page server', () => {
 		const result = (await actions.upsert(
 			makeUpsertEvent(
 				{
+					recipientName: 'Alfian Pratama',
+					label: 'Rumah',
+					isDefault: 'false',
 					addressLine: 'Jl. Melati No 10',
 					city: 'Jakarta',
 					postalCode: '12345',
@@ -195,6 +208,8 @@ describe('customer addresses page server', () => {
 		expect(valuesMock).toHaveBeenCalledWith(
 			expect.objectContaining({
 				profileId: USER_ID,
+				recipientName: 'Alfian Pratama',
+				label: 'Rumah',
 				city: 'Jakarta'
 			})
 		);
@@ -219,6 +234,9 @@ describe('customer addresses page server', () => {
 			makeUpsertEvent(
 				{
 					id: '7df01c0b-e1ab-4dcc-91d7-f2edaf2635d4',
+					recipientName: 'Alfian Pratama',
+					label: 'Kantor',
+					isDefault: 'false',
 					addressLine: 'Jl. Anyelir 77',
 					city: 'Surabaya',
 					postalCode: '60231',
@@ -233,6 +251,41 @@ describe('customer addresses page server', () => {
 
 		expect(result.status).toBe(404);
 		expect(result.message.text).toContain('tidak ditemukan');
+	});
+
+	it('sets only one default address when creating with isDefault true', async () => {
+		const resetWhereMock = vi.fn(() => ({
+			returning: vi.fn(async () => [])
+		}));
+		const setResetMock = vi.fn(() => ({ where: resetWhereMock }));
+
+		updateMock.mockImplementationOnce(() => ({ set: setResetMock }));
+
+		const valuesMock = vi.fn(async () => [{ id: 'new-id' }]);
+		insertMock.mockImplementationOnce(() => ({ values: valuesMock }));
+
+		await actions.upsert(
+			makeUpsertEvent(
+				{
+					recipientName: 'Alfian Pratama',
+					label: 'Rumah',
+					isDefault: 'true',
+					addressLine: 'Jl. Melati No 10',
+					city: 'Jakarta',
+					postalCode: '12345',
+					phone: '+62 812-1234-5678'
+				},
+				USER_ID
+			)
+		);
+
+		expect(updateMock).toHaveBeenCalledTimes(1);
+		expect(setResetMock).toHaveBeenCalledWith({ isDefault: false });
+		expect(valuesMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				isDefault: true
+			})
+		);
 	});
 
 	it('rejects delete when id is missing', async () => {

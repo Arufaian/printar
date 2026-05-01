@@ -141,6 +141,41 @@
       "when": 1777100015501,
       "tag": "0019_foamy_shape",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1777363814244,
+      "tag": "0020_windy_randall",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1777441342925,
+      "tag": "0021_natural_lorna_dane",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1777454451397,
+      "tag": "0022_swift_hydra",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1777596478318,
+      "tag": "0023_icy_wilson_fisk",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1777604705023,
+      "tag": "0024_charming_tarantula",
+      "breakpoints": true
     }
   ]
 }

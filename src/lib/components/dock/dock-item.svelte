@@ -1,9 +1,7 @@
 <script lang="ts">
 	// Import utility untuk merge class Tailwind
 	import { cn } from '$lib/utils.js';
-	import type { Pathname } from '$app/types';
 	import type { LucideIcon } from '@lucide/svelte';
-	import { resolve } from '$app/paths';
 
 	// Props untuk komponen DockItem
 	// Icon menggunakan tipe any karena @lucide/svelte menggunakan tipe yang berbeda dengan Svelte ComponentType
@@ -17,7 +15,7 @@
 	}: {
 		icon: LucideIcon;
 		label: string;
-		href: Pathname;
+		href: `/${string}`;
 		active?: boolean;
 		badge?: number;
 		ref?: HTMLAnchorElement | null;
@@ -32,7 +30,7 @@
 -->
 <a
 	bind:this={ref}
-	href={resolve(href)}
+	{href}
 	class={cn(
 		'flex flex-col items-center justify-center gap-1 px-3 py-2 text-xs font-medium transition-colors',
 		// Jika active, gunakan warna primary; jika tidak, gunakan muted-foreground

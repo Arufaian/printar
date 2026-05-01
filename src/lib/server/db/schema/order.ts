@@ -23,5 +23,7 @@ export const orders = pgTable('orders', {
 	deliveryMethod: text('delivery_method'),
 	shippingCost: integer('shipping_cost'),
 	totalPrice: integer('total_price'),
-	createdAt: timestamp('created_at', { withTimezone: true }).defaultNow()
+	customerNote: text('customer_note'),
+	createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow()
 });

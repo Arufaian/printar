@@ -7,3 +7,4 @@ export * from './update-cart-item-quantity';
 export * from './remove-cart-item';
 export * from './add-item-to-draft-cart';
 export * from './get-draft-cart-count';
+export * from './design-file-path';

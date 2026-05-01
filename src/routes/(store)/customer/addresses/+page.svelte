@@ -21,11 +21,15 @@
 
 	type AddressItem = {
 		id: string;
+		recipientName: string | null;
+		label: string | null;
+		isDefault: boolean | null;
 		addressLine: string | null;
 		city: string | null;
 		postalCode: string | null;
 		phone: string | null;
 		createdAt: unknown;
+		updatedAt: unknown;
 	};
 
 	let { data }: { data: PageData } = $props();
@@ -65,6 +69,9 @@
 	const openCreateModal = () => {
 		mode = 'create';
 		$formData.id = undefined;
+		$formData.recipientName = '';
+		$formData.label = '';
+		$formData.isDefault = false;
 		$formData.addressLine = '';
 		$formData.city = '';
 		$formData.postalCode = '';
@@ -75,6 +82,9 @@
 	const onEdit = (address: AddressItem) => {
 		mode = 'edit';
 		$formData.id = address.id;
+		$formData.recipientName = address.recipientName ?? '';
+		$formData.label = address.label ?? '';
+		$formData.isDefault = Boolean(address.isDefault);
 		$formData.addressLine = address.addressLine ?? '';
 		$formData.city = address.city ?? '';
 		$formData.postalCode = address.postalCode ?? '';
@@ -88,18 +98,14 @@
 	};
 
 	const formatAddressMeta = (address: AddressItem) => {
+		const recipientName = address.recipientName?.trim() || '-';
+		const label = address.label?.trim() || 'Tanpa label';
 		const city = address.city?.trim() || '-';
 		const postalCode = address.postalCode?.trim() || '-';
 		const phone = address.phone?.trim() || '-';
 
-		return `${city} • ${postalCode} • ${phone}`;
+		return `${label} • ${recipientName} • ${city} • ${postalCode} • ${phone}`;
 	};
-
-	$effect(() => {
-		if (!deleteDialogOpen) {
-			selectedAddress = null;
-		}
-	});
 </script>
 
 <section class="space-y-6">
@@ -165,7 +171,14 @@
 						<MapPin class="size-4" />
 					</Item.Media>
 					<Item.Content>
-						<Item.Title>{address.addressLine?.trim() || 'Alamat tanpa detail'}</Item.Title>
+						<div class="flex items-center gap-2">
+							<Item.Title>{address.addressLine?.trim() || 'Alamat tanpa detail'}</Item.Title>
+							{#if address.isDefault}
+								<span class="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
+									Utama
+								</span>
+							{/if}
+						</div>
 						<Item.Description>{formatAddressMeta(address)}</Item.Description>
 					</Item.Content>
 					<Item.Actions class="items-center gap-1">
@@ -207,6 +220,28 @@
 
 			<form method="POST" action="?/upsert" use:enhanceUpsert class="space-y-4">
 				<input type="hidden" name="id" bind:value={$formData.id} />
+
+				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+					<Form.Field {form} name="recipientName">
+						<Form.Control>
+							{#snippet children({ props })}
+								<Form.Label>Nama penerima</Form.Label>
+								<Input {...props} bind:value={$formData.recipientName} />
+							{/snippet}
+						</Form.Control>
+						<Form.FieldErrors />
+					</Form.Field>
+
+					<Form.Field {form} name="label">
+						<Form.Control>
+							{#snippet children({ props })}
+								<Form.Label>Label alamat</Form.Label>
+								<Input {...props} bind:value={$formData.label} placeholder="Rumah / Kantor" />
+							{/snippet}
+						</Form.Control>
+						<Form.FieldErrors />
+					</Form.Field>
+				</div>
 
 				<Form.Field {form} name="addressLine">
 					<Form.Control>
@@ -255,6 +290,23 @@
 					<Form.Description>
 						Pastikan nomor telepon aktif dan tersambung dengan WhatsApp.
 					</Form.Description>
+					<Form.FieldErrors />
+				</Form.Field>
+
+				<Form.Field {form} name="isDefault">
+					<Form.Control>
+						{#snippet children({ props })}
+							<label class="flex items-center gap-2 text-sm">
+								<input
+									{...props}
+									type="checkbox"
+									class="size-4"
+									bind:checked={$formData.isDefault}
+								/>
+								<span>Jadikan alamat utama</span>
+							</label>
+						{/snippet}
+					</Form.Control>
 					<Form.FieldErrors />
 				</Form.Field>
 

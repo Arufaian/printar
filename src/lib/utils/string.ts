@@ -55,3 +55,7 @@ export function formatCurrency(
 		maximumFractionDigits
 	}).format(numericValue);
 }
+
+export function getSubtotal(items: Array<{ quantity: number; unitPrice: number }>): number {
+	return items.reduce((total, item) => total + item.quantity * item.unitPrice, 0);
+}

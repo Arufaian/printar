@@ -1,4 +1,4 @@
-import { desc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, desc, eq, exists, gt, inArray, isNull } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { categories, products, variants } from '$lib/server/db/schema';
@@ -17,7 +17,18 @@ export const load: PageServerLoad = async () => {
 		})
 		.from(products)
 		.leftJoin(categories, eq(products.categoryId, categories.id))
-		.where(isNull(products.deletedAt))
+		.where(
+			and(
+				isNull(products.deletedAt),
+				exists(
+					db
+						.select({ id: variants.id })
+						.from(variants)
+						.where(and(eq(variants.productId, products.id), gt(variants.stock, 0)))
+						.limit(1)
+				)
+			)
+		)
 		.orderBy(desc(products.createdAt))
 		.limit(HOMEPAGE_PRODUCT_LIMIT);
 
@@ -34,7 +45,7 @@ export const load: PageServerLoad = async () => {
 			imgUrl: variants.imgUrl
 		})
 		.from(variants)
-		.where(inArray(variants.productId, productIds));
+		.where(and(inArray(variants.productId, productIds), gt(variants.stock, 0)));
 
 	const lowestVariantByProductId = new Map<string, { price: number; imgUrl: string | null }>();
 

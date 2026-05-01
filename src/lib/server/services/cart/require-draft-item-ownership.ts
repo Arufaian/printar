@@ -12,7 +12,8 @@ export async function requireDraftItemOwnership(
 		.select({
 			orderId: orderItems.orderId,
 			itemId: orderItems.id,
-			variantStock: variants.stock
+			variantStock: variants.stock,
+			filePath: orderItems.filePath
 		})
 		.from(orderItems)
 		.innerJoin(orders, eq(orderItems.orderId, orders.id))
@@ -27,6 +28,7 @@ export async function requireDraftItemOwnership(
 	return {
 		orderId: draftItem.orderId,
 		itemId: draftItem.itemId,
-		variantStock: draftItem.variantStock ?? 0
+		variantStock: draftItem.variantStock ?? 0,
+		filePath: draftItem.filePath ?? null
 	};
 }

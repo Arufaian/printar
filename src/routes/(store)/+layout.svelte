@@ -25,7 +25,7 @@
 	{@render children()}
 
 	<div class:hidden={!isPhone} class="contents">
-		<DockMenu activePath={page.url.pathname as Pathname} />
+		<DockMenu activePath={page.url.pathname as Pathname} {cartCount} />
 	</div>
 
 	{#if !isPhone}

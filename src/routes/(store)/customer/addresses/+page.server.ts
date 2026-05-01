@@ -1,5 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { and, eq, DrizzleQueryError } from 'drizzle-orm';
+import { and, eq, ne, DrizzleQueryError } from 'drizzle-orm';
 import { z } from 'zod';
 import { message, superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
@@ -20,11 +20,15 @@ export const load: PageServerLoad = async (event) => {
 	const response = await db
 		.select({
 			id: addresses.id,
+			recipientName: addresses.recipientName,
+			label: addresses.label,
+			isDefault: addresses.isDefault,
 			addressLine: addresses.addressLine,
 			city: addresses.city,
 			postalCode: addresses.postalCode,
 			phone: addresses.phone,
-			createdAt: addresses.createdAt
+			createdAt: addresses.createdAt,
+			updatedAt: addresses.updatedAt
 		})
 		.from(addresses)
 		.where(eq(addresses.profileId, user.id));
@@ -54,6 +58,9 @@ export const actions: Actions = {
 		}
 
 		const payload = {
+			recipientName: form.data.recipientName.trim(),
+			label: form.data.label.trim(),
+			isDefault: form.data.isDefault,
 			addressLine: form.data.addressLine.trim(),
 			city: form.data.city.trim(),
 			postalCode: form.data.postalCode.trim(),
@@ -61,6 +68,20 @@ export const actions: Actions = {
 		};
 
 		try {
+			if (payload.isDefault) {
+				const resetDefaultQuery = db.update(addresses).set({ isDefault: false });
+
+				if (form.data.id) {
+					await resetDefaultQuery
+						.where(and(eq(addresses.profileId, user.id), ne(addresses.id, form.data.id)))
+						.returning({ id: addresses.id });
+				} else {
+					await resetDefaultQuery
+						.where(eq(addresses.profileId, user.id))
+						.returning({ id: addresses.id });
+				}
+			}
+
 			if (form.data.id) {
 				const [updatedAddress] = await db
 					.update(addresses)

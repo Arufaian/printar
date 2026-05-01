@@ -2,12 +2,31 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const selectMock = vi.hoisted(() => vi.fn());
 const transactionMock = vi.hoisted(() => vi.fn());
+const updateMock = vi.hoisted(() => vi.fn());
+const createOrRefreshCheckoutIntentFromCartMock = vi.hoisted(() => vi.fn());
+const CheckoutIntentErrorMock = vi.hoisted(
+	() =>
+		class CheckoutIntentError extends Error {
+			status: number;
+
+			constructor(status: number, message: string) {
+				super(message);
+				this.status = status;
+			}
+		}
+);
 
 vi.mock('$lib/server/db', () => ({
 	db: {
 		select: selectMock,
-		transaction: transactionMock
+		transaction: transactionMock,
+		update: updateMock
 	}
+}));
+
+vi.mock('$lib/server/services/checkout-intent', () => ({
+	CheckoutIntentError: CheckoutIntentErrorMock,
+	createOrRefreshCheckoutIntentFromCart: createOrRefreshCheckoutIntentFromCartMock
 }));
 
 import { actions, load } from './+page.server';
@@ -21,9 +40,14 @@ const makeEvent = (userId: string | null) =>
 		}
 	}) as unknown as Parameters<typeof load>[0];
 
-const buildFormRequest = (payload: Record<string, string>) => {
+const buildFormRequest = (payload: Record<string, string | string[]>) => {
 	const formData = new URLSearchParams();
 	for (const [key, value] of Object.entries(payload)) {
+		if (Array.isArray(value)) {
+			for (const item of value) formData.append(key, item);
+			continue;
+		}
+
 		formData.append(key, value);
 	}
 
@@ -34,7 +58,7 @@ const buildFormRequest = (payload: Record<string, string>) => {
 	});
 };
 
-const makeActionEvent = (payload: Record<string, string>, userId: string | null) =>
+const makeActionEvent = (payload: Record<string, string | string[]>, userId: string | null) =>
 	({
 		request: buildFormRequest(payload),
 		locals: {
@@ -43,6 +67,33 @@ const makeActionEvent = (payload: Record<string, string>, userId: string | null)
 			}))
 		}
 	}) as unknown as Parameters<NonNullable<typeof actions.updateQuantity>>[0];
+
+const makeCheckoutEvent = (payload: Record<string, string | string[]>, userId: string | null) =>
+	({
+		request: buildFormRequest(payload),
+		locals: {
+			safeGetSession: vi.fn(async () => ({
+				user: userId ? { id: userId } : null
+			}))
+		}
+	}) as unknown as Parameters<NonNullable<typeof actions.checkout>>[0];
+
+const makeAttachDesignEvent = (payload: Record<string, string | string[]>, userId: string | null) =>
+	({
+		request: buildFormRequest(payload),
+		locals: {
+			safeGetSession: vi.fn(async () => ({
+				user: userId ? { id: userId } : null
+			})),
+			supabase: {
+				storage: {
+					from: vi.fn(() => ({
+						remove: vi.fn(async () => ({ error: null }))
+					}))
+				}
+			}
+		}
+	}) as unknown as Parameters<NonNullable<typeof actions.attachDesignFile>>[0];
 
 type ActionFailureResult = {
 	status: number;
@@ -91,6 +142,30 @@ const mockItemOptionsQuery = (rows: Array<Record<string, unknown>>) => {
 	}));
 };
 
+const mockCheckoutSelectionQuery = (rows: Array<Record<string, unknown>>) => {
+	selectMock.mockImplementationOnce(() => ({
+		from: vi.fn(() => ({
+			innerJoin: vi.fn(() => ({
+				where: vi.fn(async () => rows)
+			}))
+		}))
+	}));
+};
+
+const mockOwnershipQuery = (rows: Array<Record<string, unknown>>) => {
+	selectMock.mockImplementationOnce(() => ({
+		from: vi.fn(() => ({
+			innerJoin: vi.fn(() => ({
+				leftJoin: vi.fn(() => ({
+					where: vi.fn(() => ({
+						limit: vi.fn(async () => rows)
+					}))
+				}))
+			}))
+		}))
+	}));
+};
+
 describe('store cart page server load', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -130,6 +205,7 @@ describe('store cart page server load', () => {
 				id: 'item-1',
 				quantity: 2,
 				itemPrice: 10000,
+				filePath: 'customer-design/user-1/design-a.pdf',
 				variantName: 'Varian A',
 				variantStock: 9,
 				variantImage: null,
@@ -155,6 +231,8 @@ describe('store cart page server load', () => {
 			title: 'Produk A',
 			variant: 'Varian A',
 			options: ['Laminasi Doff'],
+			designFilePath: 'customer-design/user-1/design-a.pdf',
+			hasDesignFile: true,
 			unitPrice: 10500,
 			quantity: 2,
 			stock: 9
@@ -164,6 +242,34 @@ describe('store cart page server load', () => {
 			subtotal: 21000,
 			shippingCost: 1000,
 			total: 22000
+		});
+	});
+
+	it('maps item without design file as missing design status', async () => {
+		mockDraftOrderQuery([{ id: 'order-2', shippingCost: 0, totalPrice: null }]);
+		mockOrderItemsQuery([
+			{
+				id: 'item-2',
+				quantity: 1,
+				itemPrice: 8000,
+				filePath: null,
+				variantName: 'Varian B',
+				variantStock: 4,
+				variantImage: null,
+				productName: 'Produk B'
+			}
+		]);
+		mockItemOptionsQuery([]);
+
+		const result = (await load(makeEvent('b7f5c31c-6c16-4f91-bcab-35b67cc8cb9b'))) as {
+			cartItems: Array<Record<string, unknown>>;
+		};
+
+		expect(result.cartItems).toHaveLength(1);
+		expect(result.cartItems[0]).toMatchObject({
+			id: 'item-2',
+			designFilePath: null,
+			hasDesignFile: false
 		});
 	});
 
@@ -205,5 +311,139 @@ describe('store cart page server load', () => {
 		expect(output.status).toBe(400);
 		expect(output.data.message).toContain('Item keranjang wajib diisi');
 		expect(selectMock).not.toHaveBeenCalled();
+	});
+
+	it('checkout rejects unauthenticated users', async () => {
+		const result = await actions.checkout(makeCheckoutEvent({ selectedItemIds: ['item-1'] }, null));
+		const output = asActionFailureResult(result);
+
+		expect(output.status).toBe(401);
+		expect(output.data.message).toContain('Silakan login terlebih dahulu');
+		expect(selectMock).not.toHaveBeenCalled();
+	});
+
+	it('checkout rejects empty selection before DB query', async () => {
+		const result = await actions.checkout(
+			makeCheckoutEvent({ selectedItemIds: [] }, 'b7f5c31c-6c16-4f91-bcab-35b67cc8cb9b')
+		);
+		const output = asActionFailureResult(result);
+
+		expect(output.status).toBe(400);
+		expect(output.data.message).toContain('Pilih minimal satu item');
+		expect(selectMock).not.toHaveBeenCalled();
+	});
+
+	it('checkout rejects when selected item is not found', async () => {
+		createOrRefreshCheckoutIntentFromCartMock.mockRejectedValueOnce(
+			new CheckoutIntentErrorMock(404, 'Satu atau lebih item checkout tidak ditemukan.')
+		);
+
+		const result = await actions.checkout(
+			makeCheckoutEvent({ selectedItemIds: ['item-1'] }, 'b7f5c31c-6c16-4f91-bcab-35b67cc8cb9b')
+		);
+		const output = asActionFailureResult(result);
+
+		expect(output.status).toBe(404);
+		expect(output.data.message).toContain('tidak ditemukan');
+	});
+
+	it('checkout rejects when selected item has no design file', async () => {
+		createOrRefreshCheckoutIntentFromCartMock.mockRejectedValueOnce(
+			new CheckoutIntentErrorMock(
+				400,
+				'Masih ada item yang belum memiliki file desain. Lengkapi dulu sebelum checkout.'
+			)
+		);
+
+		const result = await actions.checkout(
+			makeCheckoutEvent({ selectedItemIds: ['item-1'] }, 'b7f5c31c-6c16-4f91-bcab-35b67cc8cb9b')
+		);
+		const output = asActionFailureResult(result);
+
+		expect(output.status).toBe(400);
+		expect(output.data.message).toContain('belum memiliki file desain');
+	});
+
+	it('checkout redirects to /checkout with selected item ids', async () => {
+		createOrRefreshCheckoutIntentFromCartMock.mockResolvedValueOnce({
+			intentId: '6c0cceab-5499-4feb-bf57-e8795d4d2f2a',
+			orderId: 'order-1'
+		});
+
+		await expect(
+			actions.checkout(
+				makeCheckoutEvent(
+					{ selectedItemIds: ['item-1', 'item-2'] },
+					'b7f5c31c-6c16-4f91-bcab-35b67cc8cb9b'
+				)
+			)
+		).rejects.toMatchObject({
+			status: 303,
+			location: '/checkout/shipping?intentId=6c0cceab-5499-4feb-bf57-e8795d4d2f2a'
+		});
+	});
+
+	it('attachDesignFile rejects unauthenticated users', async () => {
+		const result = await actions.attachDesignFile(
+			makeAttachDesignEvent(
+				{ itemId: 'item-1', designFilePath: 'customer-design/user-1/design.pdf' },
+				null
+			)
+		);
+		const output = asActionFailureResult(result);
+
+		expect(output.status).toBe(401);
+		expect(output.data.message).toContain('Silakan login terlebih dahulu');
+	});
+
+	it('attachDesignFile rejects invalid design file path', async () => {
+		const result = await actions.attachDesignFile(
+			makeAttachDesignEvent(
+				{ itemId: 'item-1', designFilePath: 'https://example.com/design.pdf' },
+				'b7f5c31c-6c16-4f91-bcab-35b67cc8cb9b'
+			)
+		);
+		const output = asActionFailureResult(result);
+
+		expect(output.status).toBe(400);
+		expect(output.data.message).toContain('Path file desain tidak valid');
+		expect(selectMock).not.toHaveBeenCalled();
+	});
+
+	it('attachDesignFile updates selected cart item', async () => {
+		mockOwnershipQuery([
+			{
+				orderId: 'order-1',
+				itemId: 'item-1',
+				variantStock: 4,
+				filePath: null
+			}
+		]);
+
+		const whereMock = vi.fn(async () => [{ id: 'item-1' }]);
+		const setMock = vi.fn(() => ({
+			where: whereMock
+		}));
+
+		updateMock.mockImplementationOnce(() => ({
+			set: setMock
+		}));
+
+		const result = (await actions.attachDesignFile(
+			makeAttachDesignEvent(
+				{ itemId: 'item-1', designFilePath: 'customer-design/user-1/design.pdf' },
+				'b7f5c31c-6c16-4f91-bcab-35b67cc8cb9b'
+			)
+		)) as {
+			type: string;
+			text: string;
+		};
+
+		expect(updateMock).toHaveBeenCalledTimes(1);
+		expect(setMock).toHaveBeenCalledWith({
+			filePath: 'customer-design/user-1/design.pdf'
+		});
+		expect(result.type).toBe('success');
+		expect(result.text).toContain('berhasil dilampirkan');
 	});
 });

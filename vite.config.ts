@@ -5,6 +5,12 @@ import { enhancedImages } from '@sveltejs/enhanced-img';
 
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit(), enhancedImages()],
+
+	server: {
+		host: true,
+		allowedHosts: ['superbowl-excluding-resource.ngrok-free.dev']
+	},
+
 	test: {
 		expect: { requireAssertions: true },
 		projects: [

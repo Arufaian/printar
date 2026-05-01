@@ -1,0 +1,2 @@
+DROP INDEX "checkout_intents_active_profile_order_idx";--> statement-breakpoint
+CREATE UNIQUE INDEX "checkout_intents_active_profile_order_uidx" ON "checkout_intents" USING btree ("profile_id","order_id") WHERE "checkout_intents"."status" = 'active';

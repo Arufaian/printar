@@ -2,7 +2,6 @@
 	import CatalogCarousel from './catalog-carousel.svelte';
 	import type { Product } from '$lib/types/product';
 	import type { EmblaOptionsType } from 'embla-carousel';
-	import { resolve } from '$app/paths';
 	import type { Pathname } from '$app/types';
 
 	/** Props */
@@ -39,7 +38,7 @@
 					<a
 						class="text-sm font-medium underline underline-offset-4 transition hover:text-primary sm:text-base md:text-lg"
 						aria-label={title ? `Lihat semua produk untuk ${title}` : 'Lihat semua produk'}
-						href={resolve(route)}>selengkapnya</a
+						href={route}>selengkapnya</a
 					>
 				{/if}
 			</div>
