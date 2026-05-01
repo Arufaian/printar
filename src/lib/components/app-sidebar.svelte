@@ -9,6 +9,7 @@
 	import { Gauge } from '@lucide/svelte';
 	import { LayoutGrid } from '@lucide/svelte';
 	import { Package } from '@lucide/svelte';
+	import { ShoppingBag } from '@lucide/svelte';
 
 	// This is sample data.
 	const data = {
@@ -17,6 +18,11 @@
 				title: 'Dashboard',
 				url: '/admin/dashboard',
 				icon: Gauge
+			},
+			{
+				title: 'Orders',
+				url: '/admin/orders',
+				icon: ShoppingBag
 			},
 			{
 				title: 'Category',

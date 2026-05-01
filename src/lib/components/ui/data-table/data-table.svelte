@@ -22,6 +22,7 @@
 	type DataTableProps<TData, TValue> = {
 		data: TData[];
 		columns: ColumnDef<TData, TValue>[];
+		initialColumnVisibility?: VisibilityState;
 		filterColumnId?: string;
 		filterPlaceholder?: string;
 		showColumnToggle?: boolean;
@@ -40,6 +41,7 @@
 	let {
 		data,
 		columns,
+		initialColumnVisibility = {},
 		filterColumnId = 'email',
 		filterPlaceholder = 'Filter...',
 		showColumnToggle = true,
@@ -53,7 +55,7 @@
 	let pagination = $state<PaginationState>({ pageIndex: 0, pageSize: 10 });
 	let sorting = $state<SortingState>([]);
 	let columnFilters = $state<ColumnFiltersState>([]);
-	let columnVisibility = $state<VisibilityState>({});
+	let columnVisibility = $state<VisibilityState>(initialColumnVisibility);
 	let rowSelection = $state<RowSelectionState>({});
 
 	$effect(() => {
@@ -157,7 +159,7 @@
 						<Button {...props} variant="outline" class="ms-auto">{columnToggleLabel}</Button>
 					{/snippet}
 				</DropdownMenu.Trigger>
-				<DropdownMenu.Content align="end" class="w-44">
+				<DropdownMenu.Content align="end" class="w-56">
 					{#each table.getAllColumns().filter((col) => col.getCanHide()) as column (column.id)}
 						<DropdownMenu.CheckboxItem
 							class="capitalize"
