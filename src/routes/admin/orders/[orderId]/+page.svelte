@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { enhance as kitEnhance } from '$app/forms';
 	import { Badge } from '$lib/components/ui/badge';
+	import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 	import {
 		Card,
 		CardContent,
@@ -12,6 +14,7 @@
 	import * as Stepper from '$lib/components/ui/stepper';
 	import type { AdminOrderDetailData } from '$lib/types/admin-orders';
 	import { formatCurrency, formatDateTime, formatOrderStatusLabel } from '$lib/utils/string';
+	import { toast } from 'svelte-sonner';
 	import type { PageData } from './$types';
 
 	let { data, form }: { data: PageData; form?: { message?: string; type?: 'success' } } = $props();
@@ -49,9 +52,20 @@
 
 	const allowedNextStatuses = $derived(TRANSITION_MAP[order.status] ?? []);
 	let nextStatus = $state('');
+	let confirmDialogOpen = $state(false);
+	let isSubmitting = $state(false);
 	const selectedNextStatusLabel = $derived(
 		statusOptions.find((option) => option.value === nextStatus)?.label ?? 'Pilih status tujuan'
 	);
+	const isTerminalTarget = $derived(nextStatus === 'completed' || nextStatus === 'canceled');
+	const currentStatusLabel = $derived(formatOrderStatusLabel(order.status));
+
+	const statusFormId = 'order-status-update-form';
+
+	const openStatusConfirm = () => {
+		if (!nextStatus || nextStatus === order.status || isSubmitting) return;
+		confirmDialogOpen = true;
+	};
 
 	const getStatusVariant = (status: string) => {
 		if (status === 'paid' || status === 'completed') return 'default';
@@ -161,6 +175,42 @@
 					<CardDescription>Ubah status order sesuai alur proses yang diizinkan.</CardDescription>
 				</CardHeader>
 				<CardContent class="space-y-3 pt-6">
+					<form
+						id={statusFormId}
+						method="POST"
+						action="?/updateStatus"
+						class="hidden"
+						use:kitEnhance={() => {
+							isSubmitting = true;
+
+							return async ({ result, update }) => {
+								if (result.type === 'success') {
+									const message =
+										typeof result.data?.message === 'string'
+											? result.data.message
+											: 'Status order berhasil diperbarui.';
+									toast.success(message);
+									confirmDialogOpen = false;
+									nextStatus = '';
+									await update();
+								} else if (result.type === 'failure') {
+									const message =
+										typeof result.data?.message === 'string'
+											? result.data.message
+											: 'Gagal memperbarui status order.';
+									toast.error(message);
+									await update();
+								} else {
+									toast.error('Terjadi gangguan saat memperbarui status order.');
+								}
+
+								isSubmitting = false;
+							};
+						}}
+					>
+						<input type="hidden" name="nextStatus" value={nextStatus} />
+					</form>
+
 					{#if form?.message}
 						<p
 							class={`text-sm ${form.type === 'success' ? 'text-emerald-600' : 'text-destructive'}`}
@@ -174,10 +224,23 @@
 							Status ini sudah terminal dan tidak dapat diubah lagi.
 						</p>
 					{:else}
-						<form method="POST" action="?/updateStatus" class="space-y-3">
-							<input type="hidden" name="nextStatus" value={nextStatus} />
+						<div class="space-y-3">
+							<div class="space-y-1 rounded-md border border-border/60 bg-muted/30 p-3 text-xs">
+								<p class="text-muted-foreground">Status saat ini: {currentStatusLabel}</p>
+								<p class="text-muted-foreground">
+									Status tujuan: {nextStatus ? formatOrderStatusLabel(nextStatus) : '-'}
+								</p>
+								{#if isTerminalTarget}
+									<p class="text-amber-600">
+										Perubahan menuju status terminal membutuhkan perhatian ekstra.
+									</p>
+								{/if}
+							</div>
+
 							<Select.Root type="single" name="nextStatus" bind:value={nextStatus}>
-								<Select.Trigger class="w-full">{selectedNextStatusLabel}</Select.Trigger>
+								<Select.Trigger class="w-full" disabled={isSubmitting}
+									>{selectedNextStatusLabel}</Select.Trigger
+								>
 								<Select.Content>
 									{#each statusOptions as option (option.value)}
 										{#if allowedNextStatuses.includes(option.value)}
@@ -190,13 +253,38 @@
 							</Select.Root>
 
 							<button
-								type="submit"
+								type="button"
 								class="inline-flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground disabled:pointer-events-none disabled:opacity-50"
-								disabled={!nextStatus || nextStatus === order.status}
+								disabled={!nextStatus || nextStatus === order.status || isSubmitting}
+								onclick={openStatusConfirm}
 							>
-								Simpan Status
+								{isSubmitting ? 'Menyimpan...' : 'Simpan Status'}
 							</button>
-						</form>
+
+							<AlertDialog.Root bind:open={confirmDialogOpen}>
+								<AlertDialog.Content>
+									<AlertDialog.Header>
+										<AlertDialog.Title>Konfirmasi Perubahan Status</AlertDialog.Title>
+										<AlertDialog.Description>
+											Order <strong>{order.orderCode}</strong> akan diubah dari
+											<strong>{currentStatusLabel}</strong> ke
+											<strong>{nextStatus ? formatOrderStatusLabel(nextStatus) : '-'}</strong>.
+											Perubahan ini akan tercatat pada timeline status.
+										</AlertDialog.Description>
+									</AlertDialog.Header>
+									<AlertDialog.Footer>
+										<AlertDialog.Cancel disabled={isSubmitting}>Batal</AlertDialog.Cancel>
+										<AlertDialog.Action
+											type="submit"
+											form={statusFormId}
+											disabled={isSubmitting || !nextStatus || nextStatus === order.status}
+										>
+											{isSubmitting ? 'Menyimpan...' : 'Ya, Ubah Status'}
+										</AlertDialog.Action>
+									</AlertDialog.Footer>
+								</AlertDialog.Content>
+							</AlertDialog.Root>
+						</div>
 					{/if}
 				</CardContent>
 			</Card>
