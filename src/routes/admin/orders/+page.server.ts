@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, inArray, ne, or } from 'drizzle-orm';
+import { and, desc, eq, inArray, ne } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { orders, payments, profiles } from '$lib/server/db/schema';
 import type {
@@ -9,13 +9,11 @@ import type {
 import type { PageServerLoad } from './$types';
 
 const DEFAULT_FILTERS: AdminOrderListFilters = {
-	q: '',
 	status: 'all',
 	payment: 'all'
 };
 
 export const load: PageServerLoad<AdminOrderListData> = async ({ url }) => {
-	const q = (url.searchParams.get('q') ?? '').trim();
 	const status = (url.searchParams.get('status') ?? 'all').trim();
 	const payment = (url.searchParams.get('payment') ?? 'all').trim();
 
@@ -29,12 +27,7 @@ export const load: PageServerLoad<AdminOrderListData> = async ({ url }) => {
 		})
 		.from(orders)
 		.leftJoin(profiles, eq(orders.profileId, profiles.id))
-		.where(
-			and(
-				ne(orders.status, 'draft'),
-				q ? or(ilike(orders.id, `%${q}%`), ilike(profiles.name, `%${q}%`)) : undefined
-			)
-		)
+		.where(and(ne(orders.status, 'draft')))
 		.orderBy(desc(orders.createdAt));
 
 	const orderIds = orderRows.map((row) => row.id);
@@ -73,7 +66,6 @@ export const load: PageServerLoad<AdminOrderListData> = async ({ url }) => {
 		orders: mappedOrders,
 		filters: {
 			...DEFAULT_FILTERS,
-			q,
 			status,
 			payment
 		}

@@ -8,7 +8,6 @@ export type AdminOrderListItem = {
 };
 
 export type AdminOrderListFilters = {
-	q: string;
 	status: string;
 	payment: string;
 };

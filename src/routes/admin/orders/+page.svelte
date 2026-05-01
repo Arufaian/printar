@@ -16,22 +16,36 @@
 	});
 
 	const statusOptions = [
-		'all',
-		'pending_payment',
-		'paid',
-		'file_review',
-		'revision_requested',
-		'printing',
-		'ready',
-		'shipped',
-		'completed',
-		'canceled'
+		{ value: 'all', label: 'Semua Status' },
+		{ value: 'pending_payment', label: 'Pending Payment' },
+		{ value: 'paid', label: 'Paid' },
+		{ value: 'file_review', label: 'File Review' },
+		{ value: 'revision_requested', label: 'Revision Requested' },
+		{ value: 'printing', label: 'Printing' },
+		{ value: 'ready', label: 'Ready' },
+		{ value: 'shipped', label: 'Shipped' },
+		{ value: 'completed', label: 'Completed' },
+		{ value: 'canceled', label: 'Canceled' }
 	] as const;
 
-	const paymentOptions = ['all', 'pending', 'settlement', 'expire', 'cancel', 'none'] as const;
+	const paymentOptions = [
+		{ value: 'all', label: 'Semua Payment' },
+		{ value: 'pending', label: 'Pending' },
+		{ value: 'settlement', label: 'Settlement' },
+		{ value: 'expire', label: 'Expire' },
+		{ value: 'cancel', label: 'Cancel' },
+		{ value: 'none', label: 'None' }
+	] as const;
 
 	let selectedStatus = $state(data.filters.status || 'all');
 	let selectedPayment = $state(data.filters.payment || 'all');
+
+	const selectedStatusLabel = $derived(
+		statusOptions.find((option) => option.value === selectedStatus)?.label ?? 'Filter Status'
+	);
+	const selectedPaymentLabel = $derived(
+		paymentOptions.find((option) => option.value === selectedPayment)?.label ?? 'Filter Payment'
+	);
 
 	const tableData = $derived((data.orders as AdminOrderListItem[]) ?? []);
 </script>
@@ -41,10 +55,10 @@
 		<div class="w-full md:w-56">
 			<input type="hidden" name="status" value={selectedStatus} />
 			<Select.Root type="single" name="status" bind:value={selectedStatus}>
-				<Select.Trigger class="w-full">{selectedStatus}</Select.Trigger>
+				<Select.Trigger class="w-full">{selectedStatusLabel}</Select.Trigger>
 				<Select.Content>
-					{#each statusOptions as option (option)}
-						<Select.Item value={option} label={option}>{option}</Select.Item>
+					{#each statusOptions as option (option.value)}
+						<Select.Item value={option.value} label={option.label}>{option.label}</Select.Item>
 					{/each}
 				</Select.Content>
 			</Select.Root>
@@ -53,10 +67,10 @@
 		<div class="w-full md:w-48">
 			<input type="hidden" name="payment" value={selectedPayment} />
 			<Select.Root type="single" name="payment" bind:value={selectedPayment}>
-				<Select.Trigger class="w-full">{selectedPayment}</Select.Trigger>
+				<Select.Trigger class="w-full">{selectedPaymentLabel}</Select.Trigger>
 				<Select.Content>
-					{#each paymentOptions as option (option)}
-						<Select.Item value={option} label={option}>{option}</Select.Item>
+					{#each paymentOptions as option (option.value)}
+						<Select.Item value={option.value} label={option.label}>{option.label}</Select.Item>
 					{/each}
 				</Select.Content>
 			</Select.Root>
