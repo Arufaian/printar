@@ -7,15 +7,51 @@
 		CardHeader,
 		CardTitle
 	} from '$lib/components/ui/card';
+	import * as Select from '$lib/components/ui/select';
 	import { Separator } from '$lib/components/ui/separator';
 	import * as Stepper from '$lib/components/ui/stepper';
 	import type { AdminOrderDetailData } from '$lib/types/admin-orders';
-	import { formatCurrency, formatDateTime } from '$lib/utils/string';
+	import { formatCurrency, formatDateTime, formatOrderStatusLabel } from '$lib/utils/string';
 	import type { PageData } from './$types';
 
-	let { data }: { data: PageData } = $props();
+	let { data, form }: { data: PageData; form?: { message?: string; type?: 'success' } } = $props();
 	const order = $derived(data.order as AdminOrderDetailData);
 	const activeTimelineStep = $derived(order.timeline.length);
+
+	const ORDER_STATUSES = [
+		'pending_payment',
+		'paid',
+		'file_review',
+		'revision_requested',
+		'printing',
+		'ready',
+		'shipped',
+		'completed',
+		'canceled'
+	] as const;
+
+	const TRANSITION_MAP: Record<string, string[]> = {
+		pending_payment: ['paid', 'canceled'],
+		paid: ['file_review', 'canceled'],
+		file_review: ['revision_requested', 'printing', 'canceled'],
+		revision_requested: ['file_review', 'canceled'],
+		printing: ['ready', 'canceled'],
+		ready: ['shipped', 'completed', 'canceled'],
+		shipped: ['completed'],
+		completed: [],
+		canceled: []
+	};
+
+	const statusOptions = ORDER_STATUSES.map((status) => ({
+		value: status,
+		label: formatOrderStatusLabel(status)
+	}));
+
+	const allowedNextStatuses = $derived(TRANSITION_MAP[order.status] ?? []);
+	let nextStatus = $state('');
+	const selectedNextStatusLabel = $derived(
+		statusOptions.find((option) => option.value === nextStatus)?.label ?? 'Pilih status tujuan'
+	);
 
 	const getStatusVariant = (status: string) => {
 		if (status === 'paid' || status === 'completed') return 'default';
@@ -119,6 +155,52 @@
 		</div>
 
 		<div class="space-y-6 xl:col-span-4">
+			<Card>
+				<CardHeader class="space-y-1.5 border-b">
+					<CardTitle>Aksi Status</CardTitle>
+					<CardDescription>Ubah status order sesuai alur proses yang diizinkan.</CardDescription>
+				</CardHeader>
+				<CardContent class="space-y-3 pt-6">
+					{#if form?.message}
+						<p
+							class={`text-sm ${form.type === 'success' ? 'text-emerald-600' : 'text-destructive'}`}
+						>
+							{form.message}
+						</p>
+					{/if}
+
+					{#if allowedNextStatuses.length === 0}
+						<p class="text-sm text-muted-foreground">
+							Status ini sudah terminal dan tidak dapat diubah lagi.
+						</p>
+					{:else}
+						<form method="POST" action="?/updateStatus" class="space-y-3">
+							<input type="hidden" name="nextStatus" value={nextStatus} />
+							<Select.Root type="single" name="nextStatus" bind:value={nextStatus}>
+								<Select.Trigger class="w-full">{selectedNextStatusLabel}</Select.Trigger>
+								<Select.Content>
+									{#each statusOptions as option (option.value)}
+										{#if allowedNextStatuses.includes(option.value)}
+											<Select.Item value={option.value} label={option.label}
+												>{option.label}</Select.Item
+											>
+										{/if}
+									{/each}
+								</Select.Content>
+							</Select.Root>
+
+							<button
+								type="submit"
+								class="inline-flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground disabled:pointer-events-none disabled:opacity-50"
+								disabled={!nextStatus || nextStatus === order.status}
+							>
+								Simpan Status
+							</button>
+						</form>
+					{/if}
+				</CardContent>
+			</Card>
+
 			<Card>
 				<CardHeader class="border-b">
 					<div class="flex items-center justify-between gap-3">

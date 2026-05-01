@@ -1,4 +1,4 @@
-import { error } from '@sveltejs/kit';
+import { error, fail } from '@sveltejs/kit';
 import { asc, desc, eq, inArray } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import {
@@ -20,7 +20,38 @@ import {
 	formatOrderCode,
 	formatOrderStatusLabel
 } from '$lib/utils/string';
-import type { PageServerLoad } from './$types';
+import { z } from 'zod';
+import type { Actions, PageServerLoad } from './$types';
+
+const ORDER_STATUSES = [
+	'pending_payment',
+	'paid',
+	'file_review',
+	'revision_requested',
+	'printing',
+	'ready',
+	'shipped',
+	'completed',
+	'canceled'
+] as const;
+
+const TRANSITION_MAP: Record<string, string[]> = {
+	pending_payment: ['paid', 'canceled'],
+	paid: ['file_review', 'canceled'],
+	file_review: ['revision_requested', 'printing', 'canceled'],
+	revision_requested: ['file_review', 'canceled'],
+	printing: ['ready', 'canceled'],
+	ready: ['shipped', 'completed', 'canceled'],
+	shipped: ['completed'],
+	completed: [],
+	canceled: []
+};
+
+const updateStatusSchema = z.object({
+	nextStatus: z.enum(ORDER_STATUSES, {
+		message: 'Status tujuan tidak valid.'
+	})
+});
 
 export const load: PageServerLoad = async ({ params }) => {
 	const orderId = params.orderId;
@@ -196,3 +227,81 @@ export const load: PageServerLoad = async ({ params }) => {
 		order: detail
 	};
 };
+
+export const actions = {
+	updateStatus: async (event) => {
+		const { data } = await event.locals.supabase.auth.getUser();
+		const user = data.user;
+
+		if (!user) {
+			return fail(401, { message: 'Anda harus login untuk mengubah status order.' });
+		}
+
+		const [adminProfile] = await db
+			.select({ id: profiles.id, role: profiles.role })
+			.from(profiles)
+			.where(eq(profiles.id, user.id))
+			.limit(1);
+
+		if (!adminProfile || adminProfile.role !== 'admin') {
+			return fail(403, { message: 'Anda tidak memiliki akses untuk mengubah status order.' });
+		}
+
+		const formData = await event.request.formData();
+		const parsedPayload = updateStatusSchema.safeParse({
+			nextStatus: formData.get('nextStatus')
+		});
+
+		if (!parsedPayload.success) {
+			return fail(400, {
+				message: parsedPayload.error.issues[0]?.message ?? 'Payload status tidak valid.'
+			});
+		}
+
+		const orderId = event.params.orderId;
+		const [orderRow] = await db
+			.select({ id: orders.id, status: orders.status })
+			.from(orders)
+			.where(eq(orders.id, orderId))
+			.limit(1);
+
+		if (!orderRow?.id) {
+			return fail(404, { message: 'Order tidak ditemukan.' });
+		}
+
+		const currentStatus = orderRow.status ?? 'pending_payment';
+		const nextStatus = parsedPayload.data.nextStatus;
+
+		if (currentStatus === nextStatus) {
+			return fail(400, { message: 'Status baru harus berbeda dari status saat ini.' });
+		}
+
+		const allowedStatuses = TRANSITION_MAP[currentStatus] ?? [];
+		if (!allowedStatuses.includes(nextStatus)) {
+			return fail(400, {
+				message: `Transisi status dari ${formatOrderStatusLabel(currentStatus)} ke ${formatOrderStatusLabel(nextStatus)} tidak diizinkan.`
+			});
+		}
+
+		await db.transaction(async (tx) => {
+			await tx
+				.update(orders)
+				.set({
+					status: nextStatus,
+					updatedAt: new Date()
+				})
+				.where(eq(orders.id, orderId));
+
+			await tx.insert(orderStatusLogs).values({
+				orderId,
+				status: nextStatus,
+				changeBy: user.id
+			});
+		});
+
+		return {
+			type: 'success' as const,
+			message: `Status order berhasil diubah ke ${formatOrderStatusLabel(nextStatus)}.`
+		};
+	}
+} satisfies Actions;
