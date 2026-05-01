@@ -115,6 +115,12 @@ export const createSnapForOrder = async (
 				.limit(1);
 
 			const reusableSnapPayload = getReusableSnapPayload(existingPayment?.rawResponse ?? null);
+			const raw = existingPayment?.rawResponse as Record<string, unknown> | null | undefined;
+			console.warn('[midtrans:create] duplicate order_id detected', {
+				orderId: params.orderId,
+				hasStoredToken: typeof raw?.token === 'string' && raw.token.length > 0,
+				hasStoredRedirectUrl: typeof raw?.redirect_url === 'string' && raw.redirect_url.length > 0
+			});
 			if (reusableSnapPayload) {
 				return {
 					status: 200,

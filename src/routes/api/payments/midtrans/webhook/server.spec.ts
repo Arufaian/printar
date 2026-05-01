@@ -151,7 +151,9 @@ describe('midtrans webhook API', () => {
 			.mockImplementationOnce(() => ({
 				from: vi.fn(() => ({
 					where: vi.fn(() => ({
-						limit: vi.fn(async () => [{ id: 'payment-1' }])
+						limit: vi.fn(async () => [
+							{ id: 'payment-1', rawResponse: { token: 'snap-token', redirect_url: 'https://x' } }
+						])
 					}))
 				}))
 			}));
@@ -164,6 +166,16 @@ describe('midtrans webhook API', () => {
 		expect(response.status).toBe(200);
 		expect(insertMock).not.toHaveBeenCalled();
 		expect(updateMock).toHaveBeenCalledTimes(1);
+		expect(updateSetMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				rawResponse: expect.objectContaining({
+					token: 'snap-token',
+					redirect_url: 'https://x',
+					webhook_last_payload: expect.objectContaining({ order_id: ORDER_ID }),
+					webhook_received_at: expect.any(String)
+				})
+			})
+		);
 	});
 
 	it('inserts payment row when missing', async () => {

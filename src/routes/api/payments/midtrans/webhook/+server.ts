@@ -61,10 +61,8 @@ export const POST: RequestHandler = async (event) => {
 		return json({ message: 'Status transaksi Midtrans tidak didukung.' }, { status: 400 });
 	}
 
-	const rawResponse = {
-		...(typeof payload === 'object' && payload ? payload : {}),
-		received_at: new Date().toISOString()
-	};
+	const receivedAt = new Date().toISOString();
+	const webhookPayloadRaw = typeof payload === 'object' && payload ? payload : {};
 
 	const mappedOrderStatus = mapMidtransStatusToOrderStatus(webhookPayload.transaction_status);
 
@@ -81,10 +79,22 @@ export const POST: RequestHandler = async (event) => {
 			}
 
 			const [existingPayment] = await tx
-				.select({ id: payments.id })
+				.select({ id: payments.id, rawResponse: payments.rawResponse })
 				.from(payments)
 				.where(eq(payments.orderId, internalOrderId))
 				.limit(1);
+
+			const existingRawResponse =
+				existingPayment?.rawResponse && typeof existingPayment.rawResponse === 'object'
+					? existingPayment.rawResponse
+					: {};
+
+			const mergedRawResponse = {
+				...existingRawResponse,
+				webhook_last_payload: webhookPayloadRaw,
+				webhook_received_at: receivedAt,
+				received_at: receivedAt
+			};
 
 			if (existingPayment?.id) {
 				await tx
@@ -92,7 +102,7 @@ export const POST: RequestHandler = async (event) => {
 					.set({
 						status: paymentStatus,
 						paymentMethod: webhookPayload.payment_type ?? null,
-						rawResponse
+						rawResponse: mergedRawResponse
 					})
 					.where(eq(payments.id, existingPayment.id));
 			} else {
@@ -100,7 +110,7 @@ export const POST: RequestHandler = async (event) => {
 					orderId: internalOrderId,
 					status: paymentStatus,
 					paymentMethod: webhookPayload.payment_type ?? null,
-					rawResponse
+					rawResponse: mergedRawResponse
 				});
 			}
 

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto } from '$app/navigation';
 	import {
 		Card,
 		CardContent,
@@ -18,16 +18,16 @@
 	onMount(() => {
 		const result = new URLSearchParams(window.location.search).get('result');
 		if (result === 'finish') {
-			void (async () => {
-				await invalidateAll();
-				await goto('/');
-			})();
+			void goto('/customer/orders');
 			return;
 		}
 
 		paymentController.configure({
 			midtransScriptUrl: data.midtransScriptUrl,
-			midtransClientKey: data.midtransClientKey
+			midtransClientKey: data.midtransClientKey,
+			onSuccess: async () => {
+				await goto('/customer/orders');
+			}
 		});
 		paymentController.loadSnapScript();
 	});

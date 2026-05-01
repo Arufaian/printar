@@ -39,7 +39,7 @@ export const load: PageServerLoad = async (event) => {
 	const result = event.url.searchParams.get('result')?.trim() ?? '';
 
 	if (result === 'finish') {
-		throw redirect(303, '/');
+		throw redirect(303, '/customer/orders');
 	}
 
 	const parsedIntentId = uuidSchema.safeParse(intentId);

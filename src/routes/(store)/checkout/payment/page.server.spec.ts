@@ -132,14 +132,14 @@ describe('checkout payment page server', () => {
 		});
 	});
 
-	it('redirects to home when result=finish is present', async () => {
+	it('redirects to customer orders when result=finish is present', async () => {
 		await expect(
 			load(
 				makeEvent(USER_ID, `http://localhost/checkout/payment?intentId=${INTENT_ID}&result=finish`)
 			)
 		).rejects.toMatchObject({
 			status: 303,
-			location: '/'
+			location: '/customer/orders'
 		});
 	});
 
