@@ -6,6 +6,10 @@ import { enhancedImages } from '@sveltejs/enhanced-img';
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit(), enhancedImages()],
 
+	ssr: {
+		noExternal: ['layerchart']
+	},
+
 	server: {
 		host: true,
 		allowedHosts: ['superbowl-excluding-resource.ngrok-free.dev']
