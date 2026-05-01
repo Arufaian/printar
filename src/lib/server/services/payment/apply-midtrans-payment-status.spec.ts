@@ -33,7 +33,14 @@ describe('applyMidtransPaymentStatus', () => {
 			.mockImplementationOnce(() => ({
 				from: vi.fn(() => ({
 					where: vi.fn(() => ({
-						limit: vi.fn(async () => [{ id: 'intent-1', sourceOrderId: 'source-1' }])
+						limit: vi.fn(async () => [
+							{
+								id: 'intent-1',
+								sourceOrderId: 'source-1',
+								deliveryMethod: null,
+								shippingCost: 0
+							}
+						])
 					}))
 				}))
 			}))
@@ -45,7 +52,9 @@ describe('applyMidtransPaymentStatus', () => {
 			}))
 			.mockImplementationOnce(() => ({
 				from: vi.fn(() => ({
-					where: vi.fn(() => ({ limit: vi.fn(async () => [{ shippingCost: 18000 }]) }))
+					where: vi.fn(() => ({
+						limit: vi.fn(async () => [{ deliveryMethod: 'courier', shippingCost: 18000 }])
+					}))
 				}))
 			}));
 
@@ -81,6 +90,14 @@ describe('applyMidtransPaymentStatus', () => {
 				deliveryMethod: null,
 				addressId: null,
 				customerNote: null
+			})
+		);
+
+		expect(updateSetMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				status: 'converted',
+				deliveryMethod: 'courier',
+				shippingCost: 18000
 			})
 		);
 	});

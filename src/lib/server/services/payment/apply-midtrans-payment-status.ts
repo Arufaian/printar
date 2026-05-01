@@ -123,7 +123,12 @@ export async function applyMidtransPaymentStatus(
 
 	if (mappedOrderStatus === 'paid') {
 		const [activeIntent] = await tx
-			.select({ id: checkoutIntents.id, sourceOrderId: checkoutIntents.orderId })
+			.select({
+				id: checkoutIntents.id,
+				sourceOrderId: checkoutIntents.orderId,
+				deliveryMethod: checkoutIntents.deliveryMethod,
+				shippingCost: checkoutIntents.shippingCost
+			})
 			.from(checkoutIntents)
 			.where(
 				and(
@@ -185,10 +190,25 @@ export async function applyMidtransPaymentStatus(
 			);
 
 			const [sourceOrder] = await tx
-				.select({ shippingCost: orders.shippingCost })
+				.select({
+					deliveryMethod: orders.deliveryMethod,
+					shippingCost: orders.shippingCost
+				})
 				.from(orders)
 				.where(eq(orders.id, activeIntent.sourceOrderId))
 				.limit(1);
+
+			const normalizedIntentDeliveryMethod = activeIntent.deliveryMethod?.trim() || null;
+			const normalizedSourceDeliveryMethod = sourceOrder?.deliveryMethod?.trim() || null;
+			const normalizedIntentShippingCost = activeIntent.shippingCost ?? 0;
+			const normalizedSourceShippingCost = sourceOrder?.shippingCost ?? 0;
+
+			const nextIntentDeliveryMethod =
+				normalizedIntentDeliveryMethod ?? normalizedSourceDeliveryMethod;
+			const nextIntentShippingCost =
+				normalizedIntentDeliveryMethod !== null
+					? normalizedIntentShippingCost
+					: normalizedSourceShippingCost;
 
 			const hasRemainingItems = remainingItems.length > 0;
 			const nextTotalPrice = hasRemainingItems
@@ -211,6 +231,8 @@ export async function applyMidtransPaymentStatus(
 				.update(checkoutIntents)
 				.set({
 					status: 'converted',
+					deliveryMethod: nextIntentDeliveryMethod,
+					shippingCost: nextIntentShippingCost,
 					convertedAt: new Date(),
 					updatedAt: new Date()
 				})
