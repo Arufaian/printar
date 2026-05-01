@@ -169,6 +169,13 @@
       "when": 1777596478318,
       "tag": "0023_icy_wilson_fisk",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1777604705023,
+      "tag": "0024_charming_tarantula",
+      "breakpoints": true
     }
   ]
 }

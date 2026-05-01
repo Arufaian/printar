@@ -13,6 +13,11 @@ const snapClient = new midtransClient.Snap({
 	serverKey: MIDTRANS_SERVER_KEY
 });
 
+const coreClient = new midtransClient.CoreApi({
+	isProduction: MIDTRANS_IS_PRODUCTION,
+	serverKey: MIDTRANS_SERVER_KEY
+});
+
 /**
  * @typedef {{
  * 	firstName?: string;
@@ -138,4 +143,23 @@ export function verifyMidtransSignature(payload) {
 	const expected = createHash('sha512').update(raw).digest('hex');
 
 	return expected === signatureKey;
+}
+
+/**
+ * @param {string} orderId
+ */
+export async function getMidtransTransactionStatus(orderId) {
+	if (!orderId?.trim()) {
+		throw new Error('[midtrans] orderId is required to fetch transaction status.');
+	}
+
+	try {
+		const response = await coreClient.transaction.status(orderId);
+		return response;
+	} catch (error) {
+		console.error('[midtrans] get transaction status failed', error);
+		throw Object.assign(new Error('[midtrans] failed to get transaction status.'), {
+			cause: error
+		});
+	}
 }

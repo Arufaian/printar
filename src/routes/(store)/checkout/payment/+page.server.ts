@@ -16,6 +16,7 @@ import {
 	CheckoutIntentError,
 	getCheckoutIntentSummaryRealtime
 } from '$lib/server/services/checkout-intent';
+import { syncMidtransOrderStatus } from '$lib/server/services/payment';
 import type { PageServerLoad } from './$types';
 
 const uuidSchema = z.uuid('ID checkout tidak valid.');
@@ -84,6 +85,10 @@ export const load: PageServerLoad = async (event) => {
 
 	if (!orderRow) {
 		throw redirect(303, '/cart');
+	}
+
+	if (orderRow.status === 'pending_payment') {
+		await syncMidtransOrderStatus(orderRow.id);
 	}
 
 	const selectedAddress = orderRow.addressId

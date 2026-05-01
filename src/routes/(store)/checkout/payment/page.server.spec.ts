@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const selectMock = vi.hoisted(() => vi.fn());
 const getCheckoutIntentSummaryRealtimeMock = vi.hoisted(() => vi.fn());
+const syncMidtransOrderStatusMock = vi.hoisted(() => vi.fn());
 
 vi.mock('$env/static/public', () => ({
 	PUBLIC_MIDTRANS_CLIENT_KEY: 'Mid-client-sandbox-key'
@@ -29,6 +30,10 @@ vi.mock('$lib/server/services/checkout-intent', () => {
 	};
 });
 
+vi.mock('$lib/server/services/payment', () => ({
+	syncMidtransOrderStatus: syncMidtransOrderStatusMock
+}));
+
 import { load } from './+page.server';
 
 const USER_ID = 'b7f5c31c-6c16-4f91-bcab-35b67cc8cb9b';
@@ -51,6 +56,7 @@ const makeEvent = (
 describe('checkout payment page server', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		syncMidtransOrderStatusMock.mockResolvedValue({ skipped: true });
 
 		getCheckoutIntentSummaryRealtimeMock.mockResolvedValue({
 			intentId: INTENT_ID,
@@ -70,7 +76,7 @@ describe('checkout payment page server', () => {
 							limit: vi.fn(async () => [
 								{
 									id: ORDER_ID,
-									status: 'draft',
+									status: 'pending_payment',
 									addressId: 'addr-1',
 									deliveryMethod: 'courier',
 									customerNote: 'Catatan test',
@@ -175,5 +181,6 @@ describe('checkout payment page server', () => {
 		expect(result.items[0].image).toBe('https://example.com/variant.jpg');
 		expect(result.midtransClientKey).toBe('Mid-client-sandbox-key');
 		expect(result.midtransScriptUrl).toContain('sandbox.midtrans.com');
+		expect(syncMidtransOrderStatusMock).toHaveBeenCalledWith(ORDER_ID);
 	});
 });

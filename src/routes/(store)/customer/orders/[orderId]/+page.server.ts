@@ -14,6 +14,7 @@ import {
 	profiles,
 	variants
 } from '$lib/server/db/schema';
+import { syncMidtransOrderStatus } from '$lib/server/services/payment';
 import type { OrderDetailData, OrderDetailTimelineEntry } from '$lib/types/order-detail';
 import type { OrderStatusBadgeVariant } from '$lib/types/order-list';
 import type { PageServerLoad } from './$types';
@@ -71,6 +72,8 @@ export const load: PageServerLoad = async (event) => {
 	}
 
 	const orderId = event.params.orderId;
+
+	await syncMidtransOrderStatus(orderId);
 
 	const [orderRow] = await db
 		.select({

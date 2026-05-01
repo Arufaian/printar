@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const selectMock = vi.hoisted(() => vi.fn());
 const getCheckoutIntentSummaryRealtimeMock = vi.hoisted(() => vi.fn());
+const materializeTransactionOrderFromIntentMock = vi.hoisted(() => vi.fn());
 const createSnapForOrderMock = vi.hoisted(() => vi.fn());
 
 vi.mock('$lib/server/db', () => ({
@@ -21,7 +22,8 @@ vi.mock('$lib/server/services/checkout-intent', () => {
 
 	return {
 		CheckoutIntentError,
-		getCheckoutIntentSummaryRealtime: getCheckoutIntentSummaryRealtimeMock
+		getCheckoutIntentSummaryRealtime: getCheckoutIntentSummaryRealtimeMock,
+		materializeTransactionOrderFromIntent: materializeTransactionOrderFromIntentMock
 	};
 });
 
@@ -73,6 +75,12 @@ describe('midtrans create payment API', () => {
 				reused: false
 			}
 		});
+
+		materializeTransactionOrderFromIntentMock.mockResolvedValue({
+			transactionOrderId: ORDER_ID,
+			statusBeforeCreate: 'draft',
+			customerFirstName: 'Alfian'
+		});
 	});
 
 	it('returns 401 for unauthenticated user', async () => {
@@ -93,6 +101,25 @@ describe('midtrans create payment API', () => {
 
 		const response = await POST(makeEvent({ intentId: INTENT_ID }, USER_ID));
 		expect(response.status).toBe(404);
+	});
+
+	it('returns materialization error when transaction order cannot be prepared', async () => {
+		const { CheckoutIntentError } = await import('$lib/server/services/checkout-intent');
+		selectMock.mockImplementationOnce(() => ({
+			from: vi.fn(() => ({
+				leftJoin: vi.fn(() => ({
+					where: vi.fn(() => ({
+						limit: vi.fn(async () => [{ id: ORDER_ID, status: 'draft', profileName: 'Alfian' }])
+					}))
+				}))
+			}))
+		}));
+		materializeTransactionOrderFromIntentMock.mockRejectedValueOnce(
+			new CheckoutIntentError(400, 'Checkout intent tidak memiliki item.')
+		);
+
+		const response = await POST(makeEvent({ intentId: INTENT_ID }, USER_ID));
+		expect(response.status).toBe(400);
 	});
 
 	it('returns 404 when order is not found', async () => {
@@ -152,5 +179,11 @@ describe('midtrans create payment API', () => {
 		const response = await POST(makeEvent({ intentId: INTENT_ID }, USER_ID));
 		expect(response.status).toBe(200);
 		expect(createSnapForOrderMock).toHaveBeenCalledTimes(1);
+		expect(materializeTransactionOrderFromIntentMock).toHaveBeenCalledWith({
+			userId: USER_ID,
+			intentId: INTENT_ID,
+			sourceOrderId: ORDER_ID,
+			grossAmount: 38000
+		});
 	});
 });

@@ -1,11 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const selectMock = vi.hoisted(() => vi.fn());
+const syncMidtransOrderStatusMock = vi.hoisted(() => vi.fn());
 
 vi.mock('$lib/server/db', () => ({
 	db: {
 		select: selectMock
 	}
+}));
+
+vi.mock('$lib/server/services/payment', () => ({
+	syncMidtransOrderStatus: syncMidtransOrderStatusMock
 }));
 
 import { load } from './+page.server';
@@ -26,6 +31,7 @@ const makeEvent = (userId: string | null, orderId = ORDER_ID) =>
 describe('/customer/orders/[orderId] page server', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		syncMidtransOrderStatusMock.mockResolvedValue({ skipped: true });
 	});
 
 	it('redirects guest users to sign-in', async () => {
@@ -150,5 +156,6 @@ describe('/customer/orders/[orderId] page server', () => {
 		expect(result.order.items[0].lineTotal).toBe(50000);
 		expect(result.order.items[0].options).toEqual(['Laminasi']);
 		expect(result.order.timeline.map((entry) => entry.status)).toEqual(['pending_payment', 'paid']);
+		expect(syncMidtransOrderStatusMock).toHaveBeenCalledWith(ORDER_ID);
 	});
 });

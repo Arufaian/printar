@@ -1,25 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const selectMock = vi.hoisted(() => vi.fn());
-const updateMock = vi.hoisted(() => vi.fn());
-const insertMock = vi.hoisted(() => vi.fn());
 const transactionMock = vi.hoisted(() => vi.fn());
 const verifyMidtransSignatureMock = vi.hoisted(() => vi.fn());
-const mapMidtransStatusToOrderStatusMock = vi.hoisted(() => vi.fn());
+const applyMidtransPaymentStatusMock = vi.hoisted(() => vi.fn());
 
 vi.mock('$lib/server/db', () => ({
 	db: {
 		select: selectMock,
-		update: updateMock,
-		insert: insertMock,
 		transaction: transactionMock
 	}
 }));
 
-vi.mock('$lib/server/services/payment', () => ({
-	verifyMidtransSignature: verifyMidtransSignatureMock,
-	mapMidtransStatusToOrderStatus: mapMidtransStatusToOrderStatusMock
-}));
+vi.mock('$lib/server/services/payment', () => {
+	class StockInsufficientError extends Error {}
+	return {
+		verifyMidtransSignature: verifyMidtransSignatureMock,
+		applyMidtransPaymentStatus: applyMidtransPaymentStatusMock,
+		StockInsufficientError
+	};
+});
 
 import { POST } from './+server';
 
@@ -47,14 +47,17 @@ describe('midtrans webhook API', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		verifyMidtransSignatureMock.mockReturnValue(true);
-		mapMidtransStatusToOrderStatusMock.mockReturnValue('paid');
 		transactionMock.mockImplementation(async (callback: (tx: unknown) => Promise<unknown>) =>
-			callback({
-				select: selectMock,
-				update: updateMock,
-				insert: insertMock
-			})
+			callback({ select: selectMock })
 		);
+		selectMock.mockImplementation(() => ({
+			from: vi.fn(() => ({
+				where: vi.fn(() => ({
+					limit: vi.fn(async () => [{ id: ORDER_ID }])
+				}))
+			}))
+		}));
+		applyMidtransPaymentStatusMock.mockResolvedValue({ paymentStatus: 'settlement' });
 	});
 
 	it('rejects invalid signature', async () => {
@@ -63,196 +66,31 @@ describe('midtrans webhook API', () => {
 		expect(response.status).toBe(401);
 	});
 
-	it('updates payment and order on settlement', async () => {
-		selectMock
-			.mockImplementationOnce(() => ({
-				from: vi.fn(() => ({
-					where: vi.fn(() => ({
-						limit: vi.fn(async () => [{ id: ORDER_ID, status: 'pending_payment' }])
-					}))
-				}))
-			}))
-			.mockImplementationOnce(() => ({
-				from: vi.fn(() => ({
-					where: vi.fn(() => ({
-						limit: vi.fn(async () => [{ id: 'payment-1' }])
-					}))
-				}))
-			}))
-			.mockImplementationOnce(() => ({
-				from: vi.fn(() => ({
-					where: vi.fn(async () => [{ variantId: 'variant-1', quantity: 2 }])
-				}))
-			}));
-
-		const updateWhereMock = vi.fn(async () => [{ id: 'payment-1' }]);
-		const updateReturningMock = vi.fn(async () => [{ id: 'variant-1' }]);
-		const updateSetWithReturningMock = vi.fn(() => ({
-			where: vi.fn(() => ({ returning: updateReturningMock }))
+	it('returns 404 when order not found', async () => {
+		selectMock.mockImplementationOnce(() => ({
+			from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn(async () => []) })) }))
 		}));
-		const updateSetMock = vi.fn(() => ({ where: updateWhereMock }));
-		updateMock
-			.mockImplementationOnce(() => ({ set: updateSetMock }))
-			.mockImplementationOnce(() => ({ set: updateSetWithReturningMock }))
-			.mockImplementationOnce(() => ({ set: updateSetMock }));
-
-		const insertValuesMock = vi.fn(async () => [{ id: 'log-1' }]);
-		insertMock.mockImplementation(() => ({ values: insertValuesMock }));
 
 		const response = await POST(makeEvent(basePayload));
-		expect(response.status).toBe(200);
-		expect(updateMock).toHaveBeenCalledTimes(3);
-		expect(insertMock).toHaveBeenCalledTimes(1);
-		expect(updateReturningMock).toHaveBeenCalledTimes(1);
+		expect(response.status).toBe(404);
 	});
 
-	it('maps cancel to draft', async () => {
-		mapMidtransStatusToOrderStatusMock.mockReturnValueOnce('draft');
-		selectMock
-			.mockImplementationOnce(() => ({
-				from: vi.fn(() => ({
-					where: vi.fn(() => ({
-						limit: vi.fn(async () => [{ id: ORDER_ID, status: 'pending_payment' }])
-					}))
-				}))
-			}))
-			.mockImplementationOnce(() => ({
-				from: vi.fn(() => ({
-					where: vi.fn(() => ({
-						limit: vi.fn(async () => [{ id: 'payment-1' }])
-					}))
-				}))
-			}));
-
-		const updateWhereMock = vi.fn(async () => [{ id: 'payment-1' }]);
-		const updateSetMock = vi.fn(() => ({ where: updateWhereMock }));
-		updateMock
-			.mockImplementationOnce(() => ({ set: updateSetMock }))
-			.mockImplementationOnce(() => ({ set: updateSetMock }));
-
-		const insertValuesMock = vi.fn(async () => [{ id: 'log-1' }]);
-		insertMock.mockImplementation(() => ({ values: insertValuesMock }));
-
-		const response = await POST(makeEvent({ ...basePayload, transaction_status: 'cancel' }));
-		expect(response.status).toBe(200);
-		expect(updateMock).toHaveBeenCalledTimes(2);
-	});
-
-	it('refreshes raw_response on duplicate callback without status change', async () => {
-		mapMidtransStatusToOrderStatusMock.mockReturnValueOnce('paid');
-		selectMock
-			.mockImplementationOnce(() => ({
-				from: vi.fn(() => ({
-					where: vi.fn(() => ({
-						limit: vi.fn(async () => [{ id: ORDER_ID, status: 'paid' }])
-					}))
-				}))
-			}))
-			.mockImplementationOnce(() => ({
-				from: vi.fn(() => ({
-					where: vi.fn(() => ({
-						limit: vi.fn(async () => [
-							{ id: 'payment-1', rawResponse: { token: 'snap-token', redirect_url: 'https://x' } }
-						])
-					}))
-				}))
-			}));
-
-		const updateWhereMock = vi.fn(async () => [{ id: 'payment-1' }]);
-		const updateSetMock = vi.fn(() => ({ where: updateWhereMock }));
-		updateMock.mockImplementationOnce(() => ({ set: updateSetMock }));
-
+	it('applies webhook status via shared transition service', async () => {
 		const response = await POST(makeEvent(basePayload));
 		expect(response.status).toBe(200);
-		expect(insertMock).not.toHaveBeenCalled();
-		expect(updateMock).toHaveBeenCalledTimes(1);
-		expect(updateSetMock).toHaveBeenCalledWith(
+		expect(applyMidtransPaymentStatusMock).toHaveBeenCalledWith(
+			expect.anything(),
 			expect.objectContaining({
-				rawResponse: expect.objectContaining({
-					token: 'snap-token',
-					redirect_url: 'https://x',
-					webhook_last_payload: expect.objectContaining({ order_id: ORDER_ID }),
-					webhook_received_at: expect.any(String)
-				})
+				orderId: ORDER_ID,
+				transactionStatus: 'settlement',
+				paymentType: 'bank_transfer'
 			})
 		);
 	});
 
-	it('inserts payment row when missing', async () => {
-		selectMock
-			.mockImplementationOnce(() => ({
-				from: vi.fn(() => ({
-					where: vi.fn(() => ({
-						limit: vi.fn(async () => [{ id: ORDER_ID, status: 'pending_payment' }])
-					}))
-				}))
-			}))
-			.mockImplementationOnce(() => ({
-				from: vi.fn(() => ({
-					where: vi.fn(() => ({
-						limit: vi.fn(async () => [])
-					}))
-				}))
-			}));
-
-		const updateWhereMock = vi.fn(async () => [{ id: ORDER_ID }]);
-		const updateSetMock = vi.fn(() => ({ where: updateWhereMock }));
-		const updateReturningMock = vi.fn(async () => [{ id: 'variant-1' }]);
-		const updateSetWithReturningMock = vi.fn(() => ({
-			where: vi.fn(() => ({ returning: updateReturningMock }))
-		}));
-		updateMock
-			.mockImplementationOnce(() => ({ set: updateSetWithReturningMock }))
-			.mockImplementationOnce(() => ({ set: updateSetMock }));
-
-		const insertValuesMock = vi.fn(async () => [{ id: 'payment-1' }]);
-		insertMock.mockImplementation(() => ({ values: insertValuesMock }));
-
-		selectMock.mockImplementationOnce(() => ({
-			from: vi.fn(() => ({
-				where: vi.fn(async () => [{ variantId: 'variant-1', quantity: 1 }])
-			}))
-		}));
-
-		const response = await POST(makeEvent(basePayload));
-		expect(response.status).toBe(200);
-		expect(insertMock).toHaveBeenCalled();
-	});
-
-	it('blocks settlement when stock is insufficient', async () => {
-		selectMock
-			.mockImplementationOnce(() => ({
-				from: vi.fn(() => ({
-					where: vi.fn(() => ({
-						limit: vi.fn(async () => [{ id: ORDER_ID, status: 'pending_payment' }])
-					}))
-				}))
-			}))
-			.mockImplementationOnce(() => ({
-				from: vi.fn(() => ({
-					where: vi.fn(() => ({
-						limit: vi.fn(async () => [{ id: 'payment-1' }])
-					}))
-				}))
-			}))
-			.mockImplementationOnce(() => ({
-				from: vi.fn(() => ({
-					where: vi.fn(async () => [{ variantId: 'variant-1', quantity: 3 }])
-				}))
-			}));
-
-		const updateWhereMock = vi.fn(async () => [{ id: 'payment-1' }]);
-		const updateSetMock = vi.fn(() => ({ where: updateWhereMock }));
-		const updateReturningMock = vi.fn(async () => []);
-		const updateSetWithReturningMock = vi.fn(() => ({
-			where: vi.fn(() => ({ returning: updateReturningMock }))
-		}));
-		updateMock
-			.mockImplementationOnce(() => ({ set: updateSetMock }))
-			.mockImplementationOnce(() => ({ set: updateSetWithReturningMock }));
-
-		const response = await POST(makeEvent(basePayload));
-		expect(response.status).toBe(409);
-		expect(updateReturningMock).toHaveBeenCalledTimes(1);
+	it('returns 400 when transaction status unsupported', async () => {
+		applyMidtransPaymentStatusMock.mockResolvedValueOnce({ paymentStatus: null });
+		const response = await POST(makeEvent({ ...basePayload, transaction_status: 'authorize' }));
+		expect(response.status).toBe(400);
 	});
 });

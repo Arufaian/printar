@@ -8,6 +8,7 @@ import {
 	uniqueIndex,
 	uuid
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { orderItems } from './order-items';
 import { orders } from './order';
 import { profiles } from './profiles';
@@ -58,11 +59,9 @@ export const checkoutIntents = pgTable(
 		index('checkout_intents_profile_status_idx').on(table.profileId, table.status),
 		index('checkout_intents_order_idx').on(table.orderId),
 		index('checkout_intents_transaction_order_idx').on(table.transactionOrderId),
-		uniqueIndex('checkout_intents_active_profile_order_idx').on(
-			table.profileId,
-			table.orderId,
-			table.status
-		)
+		uniqueIndex('checkout_intents_active_profile_order_uidx')
+			.on(table.profileId, table.orderId)
+			.where(sql`${table.status} = 'active'`)
 	]
 );
 

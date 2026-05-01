@@ -1,10 +1,11 @@
 import { json } from '@sveltejs/kit';
-import { and, eq, gte, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '$lib/server/db';
-import { orderItems, orderStatusLogs, orders, payments, variants } from '$lib/server/db/schema';
+import { orders } from '$lib/server/db/schema';
 import {
-	mapMidtransStatusToOrderStatus,
+	applyMidtransPaymentStatus,
+	StockInsufficientError,
 	verifyMidtransSignature
 } from '$lib/server/services/payment';
 import type { RequestHandler } from './$types';
@@ -18,19 +19,9 @@ const webhookSchema = z.object({
 	payment_type: z.string().optional()
 });
 
-const paymentStatusSchema = z.enum(['pending', 'settlement', 'expire', 'cancel']);
-
 function resolveInternalOrderId(midtransOrderId: string): string | null {
 	return z.uuid().safeParse(midtransOrderId).success ? midtransOrderId : null;
 }
-
-function mapTransactionStatusToPaymentStatus(transactionStatus: string) {
-	const normalized = transactionStatus.toLowerCase();
-	const parsed = paymentStatusSchema.safeParse(normalized);
-	return parsed.success ? parsed.data : null;
-}
-
-class StockInsufficientError extends Error {}
 
 export const POST: RequestHandler = async (event) => {
 	let payload: unknown;
@@ -56,99 +47,29 @@ export const POST: RequestHandler = async (event) => {
 		return json({ message: 'Format order_id Midtrans tidak valid.' }, { status: 400 });
 	}
 
-	const paymentStatus = mapTransactionStatusToPaymentStatus(webhookPayload.transaction_status);
-	if (!paymentStatus) {
-		return json({ message: 'Status transaksi Midtrans tidak didukung.' }, { status: 400 });
-	}
-
 	const receivedAt = new Date().toISOString();
 	const webhookPayloadRaw = typeof payload === 'object' && payload ? payload : {};
-
-	const mappedOrderStatus = mapMidtransStatusToOrderStatus(webhookPayload.transaction_status);
 
 	try {
 		const status = await db.transaction(async (tx) => {
 			const [orderRow] = await tx
-				.select({ id: orders.id, status: orders.status })
+				.select({ id: orders.id })
 				.from(orders)
 				.where(eq(orders.id, internalOrderId))
 				.limit(1);
 
-			if (!orderRow?.id) {
-				return 404;
-			}
+			if (!orderRow?.id) return 404;
 
-			const [existingPayment] = await tx
-				.select({ id: payments.id, rawResponse: payments.rawResponse })
-				.from(payments)
-				.where(eq(payments.orderId, internalOrderId))
-				.limit(1);
+			const applied = await applyMidtransPaymentStatus(tx, {
+				orderId: internalOrderId,
+				transactionStatus: webhookPayload.transaction_status,
+				paymentType: webhookPayload.payment_type ?? null,
+				rawPayload: webhookPayloadRaw as Record<string, unknown>,
+				receivedAt
+			});
 
-			const existingRawResponse =
-				existingPayment?.rawResponse && typeof existingPayment.rawResponse === 'object'
-					? existingPayment.rawResponse
-					: {};
-
-			const mergedRawResponse = {
-				...existingRawResponse,
-				webhook_last_payload: webhookPayloadRaw,
-				webhook_received_at: receivedAt,
-				received_at: receivedAt
-			};
-
-			if (existingPayment?.id) {
-				await tx
-					.update(payments)
-					.set({
-						status: paymentStatus,
-						paymentMethod: webhookPayload.payment_type ?? null,
-						rawResponse: mergedRawResponse
-					})
-					.where(eq(payments.id, existingPayment.id));
-			} else {
-				await tx.insert(payments).values({
-					orderId: internalOrderId,
-					status: paymentStatus,
-					paymentMethod: webhookPayload.payment_type ?? null,
-					rawResponse: mergedRawResponse
-				});
-			}
-
-			const shouldDecrementStock = mappedOrderStatus === 'paid' && orderRow.status !== 'paid';
-			if (shouldDecrementStock) {
-				const itemRows = await tx
-					.select({ variantId: orderItems.variantId, quantity: orderItems.quantity })
-					.from(orderItems)
-					.where(eq(orderItems.orderId, internalOrderId));
-
-				for (const itemRow of itemRows) {
-					const variantId = itemRow.variantId;
-					const quantity = itemRow.quantity ?? 0;
-					if (!variantId || quantity <= 0) continue;
-
-					const updatedRows = await tx
-						.update(variants)
-						.set({ stock: sql`${variants.stock} - ${quantity}` })
-						.where(and(eq(variants.id, variantId), gte(variants.stock, quantity)))
-						.returning({ id: variants.id });
-
-					if (updatedRows.length === 0) {
-						throw new StockInsufficientError('Stok varian tidak mencukupi untuk settlement.');
-					}
-				}
-			}
-
-			if (mappedOrderStatus && mappedOrderStatus !== orderRow.status) {
-				await tx
-					.update(orders)
-					.set({ status: mappedOrderStatus })
-					.where(eq(orders.id, internalOrderId));
-
-				await tx.insert(orderStatusLogs).values({
-					orderId: internalOrderId,
-					status: mappedOrderStatus,
-					changeBy: null
-				});
+			if (!applied.paymentStatus) {
+				return 400;
 			}
 
 			return 200;
@@ -156,6 +77,10 @@ export const POST: RequestHandler = async (event) => {
 
 		if (status === 404) {
 			return json({ message: 'Order tidak ditemukan.' }, { status: 404 });
+		}
+
+		if (status === 400) {
+			return json({ message: 'Status transaksi Midtrans tidak didukung.' }, { status: 400 });
 		}
 	} catch (error) {
 		if (error instanceof StockInsufficientError) {

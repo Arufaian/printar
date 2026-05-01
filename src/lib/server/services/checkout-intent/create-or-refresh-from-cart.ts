@@ -53,6 +53,16 @@ export async function createOrRefreshCheckoutIntentFromCart({
 
 	const orderId = orderIdSet.values().next().value as string;
 
+	const [sourceOrder] = await db
+		.select({ deliveryMethod: orders.deliveryMethod, shippingCost: orders.shippingCost })
+		.from(orders)
+		.where(and(eq(orders.id, orderId), eq(orders.profileId, userId), eq(orders.status, 'draft')))
+		.limit(1);
+
+	if (!sourceOrder) {
+		throw new CheckoutIntentError(404, 'Keranjang draft tidak ditemukan.');
+	}
+
 	const [existingIntent] = await db
 		.select({ id: checkoutIntents.id })
 		.from(checkoutIntents)
@@ -71,7 +81,11 @@ export async function createOrRefreshCheckoutIntentFromCart({
 	if (existingIntent) {
 		await db
 			.update(checkoutIntents)
-			.set({ updatedAt: new Date() })
+			.set({
+				deliveryMethod: sourceOrder.deliveryMethod,
+				shippingCost: sourceOrder.shippingCost ?? 0,
+				updatedAt: new Date()
+			})
 			.where(eq(checkoutIntents.id, existingIntent.id));
 
 		await db.delete(checkoutIntentItems).where(eq(checkoutIntentItems.intentId, existingIntent.id));
@@ -81,7 +95,9 @@ export async function createOrRefreshCheckoutIntentFromCart({
 			profileId: userId,
 			orderId,
 			source: 'cart',
-			status: 'active'
+			status: 'active',
+			deliveryMethod: sourceOrder.deliveryMethod,
+			shippingCost: sourceOrder.shippingCost ?? 0
 		});
 	}
 
