@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import {
 		Card,
 		CardContent,
@@ -26,6 +26,7 @@
 			midtransScriptUrl: data.midtransScriptUrl,
 			midtransClientKey: data.midtransClientKey,
 			onSuccess: async () => {
+				await invalidateAll();
 				await goto('/customer/orders');
 			}
 		});
