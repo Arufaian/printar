@@ -32,6 +32,10 @@ export const checkoutIntents = pgTable(
 			.notNull()
 			.references(() => orders.id, { onDelete: 'cascade' }),
 
+		transactionOrderId: uuid('transaction_order_id').references(() => orders.id, {
+			onDelete: 'set null'
+		}),
+
 		source: checkoutIntentSourceEnum().notNull(),
 		status: checkoutIntentStatusEnum().notNull().default('active'),
 
@@ -53,6 +57,7 @@ export const checkoutIntents = pgTable(
 	(table) => [
 		index('checkout_intents_profile_status_idx').on(table.profileId, table.status),
 		index('checkout_intents_order_idx').on(table.orderId),
+		index('checkout_intents_transaction_order_idx').on(table.transactionOrderId),
 		uniqueIndex('checkout_intents_active_profile_order_idx').on(
 			table.profileId,
 			table.orderId,

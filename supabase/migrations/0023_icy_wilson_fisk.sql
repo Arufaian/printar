@@ -1,0 +1,3 @@
+ALTER TABLE "checkout_intents" ADD COLUMN "transaction_order_id" uuid;--> statement-breakpoint
+ALTER TABLE "checkout_intents" ADD CONSTRAINT "checkout_intents_transaction_order_id_orders_id_fk" FOREIGN KEY ("transaction_order_id") REFERENCES "public"."orders"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "checkout_intents_transaction_order_idx" ON "checkout_intents" USING btree ("transaction_order_id");

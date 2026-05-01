@@ -162,6 +162,13 @@
       "when": 1777454451397,
       "tag": "0022_swift_hydra",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1777596478318,
+      "tag": "0023_icy_wilson_fisk",
+      "breakpoints": true
     }
   ]
 }
