@@ -46,7 +46,12 @@ describe('materializeTransactionOrderFromIntent', () => {
 				from: vi.fn(() => ({
 					where: vi.fn(() => ({
 						limit: vi.fn(async () => [
-							{ addressId: 'addr-1', deliveryMethod: 'courier', shippingCost: 18000 }
+							{
+								addressId: 'addr-1',
+								customerNote: 'Catatan pertama',
+								deliveryMethod: 'courier',
+								shippingCost: 18000
+							}
 						])
 					}))
 				}))
@@ -79,6 +84,7 @@ describe('materializeTransactionOrderFromIntent', () => {
 			expect.objectContaining({
 				totalPrice: 58000,
 				addressId: 'addr-1',
+				customerNote: 'Catatan pertama',
 				deliveryMethod: 'courier',
 				shippingCost: 18000
 			})
@@ -107,7 +113,12 @@ describe('materializeTransactionOrderFromIntent', () => {
 				from: vi.fn(() => ({
 					where: vi.fn(() => ({
 						limit: vi.fn(async () => [
-							{ addressId: 'addr-2', deliveryMethod: 'pickup', shippingCost: 0 }
+							{
+								addressId: 'addr-2',
+								customerNote: 'Catatan kedua',
+								deliveryMethod: 'pickup',
+								shippingCost: 0
+							}
 						])
 					}))
 				}))
@@ -176,6 +187,7 @@ describe('materializeTransactionOrderFromIntent', () => {
 			expect.objectContaining({
 				totalPrice: 58000,
 				addressId: 'addr-2',
+				customerNote: 'Catatan kedua',
 				deliveryMethod: 'courier',
 				shippingCost: 18000
 			})
@@ -204,7 +216,12 @@ describe('materializeTransactionOrderFromIntent', () => {
 				from: vi.fn(() => ({
 					where: vi.fn(() => ({
 						limit: vi.fn(async () => [
-							{ addressId: 'addr-3', deliveryMethod: 'courier', shippingCost: 18000 }
+							{
+								addressId: 'addr-3',
+								customerNote: 'Catatan fallback',
+								deliveryMethod: 'courier',
+								shippingCost: 18000
+							}
 						])
 					}))
 				}))
@@ -267,6 +284,7 @@ describe('materializeTransactionOrderFromIntent', () => {
 		expect(insertOrderValuesMock).toHaveBeenCalledWith(
 			expect.objectContaining({
 				addressId: 'addr-3',
+				customerNote: 'Catatan fallback',
 				deliveryMethod: 'courier',
 				shippingCost: 18000
 			})

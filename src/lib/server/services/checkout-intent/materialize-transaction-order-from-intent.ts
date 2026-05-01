@@ -51,6 +51,7 @@ export async function materializeTransactionOrderFromIntent(
 	const [sourceOrderRow] = await db
 		.select({
 			addressId: orders.addressId,
+			customerNote: orders.customerNote,
 			deliveryMethod: orders.deliveryMethod,
 			shippingCost: orders.shippingCost
 		})
@@ -90,6 +91,7 @@ export async function materializeTransactionOrderFromIntent(
 					.set({
 						totalPrice: params.grossAmount,
 						addressId: sourceOrderRow.addressId ?? null,
+						customerNote: sourceOrderRow.customerNote ?? null,
 						deliveryMethod: finalDeliveryMethod,
 						shippingCost: finalShippingCost,
 						updatedAt: new Date()
@@ -145,6 +147,7 @@ export async function materializeTransactionOrderFromIntent(
 			profileId: params.userId,
 			status: 'draft',
 			addressId: sourceOrderRow.addressId ?? null,
+			customerNote: sourceOrderRow.customerNote ?? null,
 			deliveryMethod: finalDeliveryMethod,
 			shippingCost: finalShippingCost,
 			totalPrice: params.grossAmount,

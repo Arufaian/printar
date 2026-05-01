@@ -190,13 +190,22 @@ export async function applyMidtransPaymentStatus(
 				.where(eq(orders.id, activeIntent.sourceOrderId))
 				.limit(1);
 
-			const nextTotalPrice =
-				remainingItemsTotal + remainingOptionsTotal + (sourceOrder?.shippingCost ?? 0);
+			const hasRemainingItems = remainingItems.length > 0;
+			const nextTotalPrice = hasRemainingItems
+				? remainingItemsTotal + remainingOptionsTotal + (sourceOrder?.shippingCost ?? 0)
+				: 0;
 
-			await tx
-				.update(orders)
-				.set({ totalPrice: nextTotalPrice, customerNote: null })
-				.where(eq(orders.id, activeIntent.sourceOrderId));
+			const nextOrderPatch = hasRemainingItems
+				? { totalPrice: nextTotalPrice, customerNote: null }
+				: {
+						totalPrice: 0,
+						shippingCost: 0,
+						deliveryMethod: null,
+						addressId: null,
+						customerNote: null
+					};
+
+			await tx.update(orders).set(nextOrderPatch).where(eq(orders.id, activeIntent.sourceOrderId));
 
 			await tx
 				.update(checkoutIntents)
