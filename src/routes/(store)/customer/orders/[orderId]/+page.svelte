@@ -236,7 +236,12 @@
 		</div>
 	</div>
 
-	<a href={resolve('/customer/orders')} class={buttonVariants({ variant: 'outline' })}
-		>Kembali ke Daftar Pesanan</a
-	>
+	<div class="flex flex-wrap items-center gap-3">
+		<a href={resolve(`/print/invoice/${order.id}`)} class={buttonVariants({ variant: 'default' })}>
+			Cetak Invoice
+		</a>
+		<a href={resolve('/customer/orders')} class={buttonVariants({ variant: 'outline' })}
+			>Kembali ke Daftar Pesanan</a
+		>
+	</div>
 </div>

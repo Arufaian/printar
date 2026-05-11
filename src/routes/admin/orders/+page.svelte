@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { onMount } from 'svelte';
 	import { DataTable } from '$lib/components/ui/data-table';
 	import * as Select from '$lib/components/ui/select/index.js';
 	import type { AdminOrderListItem } from '$lib/types/admin-orders';
@@ -37,8 +38,13 @@
 		{ value: 'none', label: 'None' }
 	] as const;
 
-	let selectedStatus = $state(data.filters.status || 'all');
-	let selectedPayment = $state(data.filters.payment || 'all');
+	let selectedStatus = $state('all');
+	let selectedPayment = $state('all');
+
+	onMount(() => {
+		selectedStatus = data.filters.status || 'all';
+		selectedPayment = data.filters.payment || 'all';
+	});
 
 	const selectedStatusLabel = $derived(
 		statusOptions.find((option) => option.value === selectedStatus)?.label ?? 'Filter Status'
